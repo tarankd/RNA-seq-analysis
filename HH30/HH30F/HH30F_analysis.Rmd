@@ -1,0 +1,570 @@
+---
+title: "setup seurat object"
+output: html_document
+date: "2025-11-25"
+fig_width: 6
+fig_height: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#load all libaries required for this script
+
+```{r} 
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(ggplot2)
+library(DoubletFinder)
+library(tidyverse)
+library(RColorBrewer)
+library(cowplot)
+library(openxlsx)
+
+# colour palette 
+my_cols <- brewer.pal(n=5, "Spectral")
+
+
+## feature and cell count function
+
+FeatCellCount <- function(seuratObj){dim(seuratObj)
+              }
+  
+  
+##create function for doublet finder 
+
+
+preDoublets <- function(seuratObj){  
+    seuratObj <- NormalizeData(seuratObj)
+    
+    seuratObj <- ScaleData(seuratObj)
+    seuratObj <- FindVariableFeatures(seuratObj, 
+                                      x.low.cutoff = 0.0125, 
+                                      y.cutoff = 0.25, 
+                                      do.plot=FALSE)
+    seuratObj <- RunPCA(seuratObj, pc.genes = seuratObj@var.genes, pcs.print = 0)
+    
+ 
+    return(seuratObj)
+}
+
+
+
+findDoublets <- function(seuratObj, n_pcs=30){
+    
+   
+    nExp_poi  <- round(0.15*nrow(seuratObj@meta.data))
+    
+    print('yay!')
+  
+    seuratObj <- doubletFinder(seuratObj, 
+                                  PCs = 1:30, 
+                                  pN = 0.25, 
+                                  pK = 0.01, 
+                                  nExp = nExp_poi, 
+                                  sct=FALSE)
+    
+    
+    
+     seuratObj@meta.data <- seuratObj@meta.data %>% 
+        rename_at(vars(starts_with("DF.classifications")), 
+                  funs(str_replace(., ".*", "DF.classifications"))) %>%
+        rename_at(vars(starts_with("pANN")), 
+                  funs(str_replace(., ".*", "pANN")))
+    
+       
+  
+        return(seuratObj) 
+    
+}
+
+
+#create a workbook that has the data for each cluster on separate sheets
+
+cluster_workbook <- function(data, n_clusters){
+  
+  wb <- createWorkbook()
+  addWorksheet(wb, "Markers")
+writeData(wb, sheet = "Markers", x = filtered_markers)
+
+  for(i in 0:n_clusters){
+    
+    cluster_data <- filtered_markers[filtered_markers$cluster == i,] 
+    addWorksheet(wb, as.character(i))
+    writeData(wb, sheet = as.character(i), x = cluster_data)
+    saveWorkbook(wb, file = "filtered_markers.xlsx", overwrite = TRUE)
+    
+  }
+  
+  
+}
+
+
+#top 5 genes for each cluster, sorted largest to smallest for avg log, more than 0.1 for pct.1 and less than 0.05 for p val adj
+top5 <- function(sObj){
+
+clusters <- filtered_markers %>% group_by(cluster) %>% arrange(cluster, desc(avg_log2FC)) %>% filter(pct.1 > 0.1) %>% filter(p_val_adj < 0.05) %>% top_n(5, avg_log2FC)
+  
+
+return(clusters)  
+ 
+   
+}
+
+
+
+```
+
+#load scRNA-seq data set 
+
+```{r}
+
+HH30F.data <- Read10X(data.dir = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/results/1_HH30_F_results/outs/filtered_feature_bc_matrix/")
+```
+
+#assign to seurat object
+
+```{r}
+
+HH30F <- CreateSeuratObject(counts = HH30F.data, project = "HH30", min.cells = 3, min.features = 200)
+HH30F
+
+
+```
+
+
+#add column to metadata to assign the percentage of mitochondrial dna to
+
+```{r}
+HH30F[["percent.mt"]] <- PercentageFeatureSet(HH30F, pattern = "^MT-")
+```
+
+#visualise QC metrics as violin plot
+
+```{r}
+QC_metric_violin_plot<- VlnPlot(HH30F, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+
+QC_metric_violin_plot
+
+```
+
+#feature scatter used to visualise the feature-feature relationships but can be used for any relationship
+
+```{r}
+
+mt_genes_scatter_plot1 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "percent.mt")
+features_scatter_plot2 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+mt_genes_scatter_plot1 + features_scatter_plot2
+```
+
+
+
+
+
+
+#subset data to look at specific parameters bc values that are out of scope aren't important and therefore not needed in the graph (??? help)
+#remove mitochondrial genes
+
+
+```{r}
+HH30F <- subset(HH30F, subset = nFeature_RNA > 250 & 
+                                percent.mt   <5     &
+                                nCount_RNA   >1000  
+                )
+
+mt_genes_scatter_plot3 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "percent.mt")
+features_scatter_plot4 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+mt_genes_scatter_plot3 + features_scatter_plot4
+```
+#compare mitchondrial RNA subset data
+
+```{r}
+mt_genes_scatter_plot1 + mt_genes_scatter_plot3
+```
+
+#compare features subset data
+
+```{r}
+features_scatter_plot2 + features_scatter_plot4
+
+```
+#doubletFinder
+
+```{r}
+
+HH30F <- preDoublets(HH30F)
+HH30F <- findDoublets(HH30F)
+
+```
+
+
+```{r}
+HH30F <- subset(HH30F, subset = DF.classifications != "Doublet" )
+```
+
+
+
+#plot after doublet finder comparison
+
+```{r}
+mt_genes_scatter_plot5 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "percent.mt")
+features_scatter_plot6 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+```
+
+#compare mito RNA before and after subset and after doublet finder
+
+```{r}
+
+mt_genes_scatter_plot1 + mt_genes_scatter_plot3 + mt_genes_scatter_plot5
+
+```
+
+```{r}
+
+features_scatter_plot2 + features_scatter_plot4 + features_scatter_plot6
+```
+
+
+
+
+#checkpoint after QC 
+
+```{r}
+saveRDS(HH30F, file = "sObj_QC_1.RDS")
+```
+
+
+
+
+#normalise the data
+
+```{r}
+HH30F <- NormalizeData(HH30F, normalization.method = "LogNormalize", scale.factor = 10000)
+```
+
+#find the variable features
+
+
+```{r}
+HH30F <- FindVariableFeatures(HH30F, selection.method = "vst", nfeatures = 2000)
+```
+
+#identify top 10 variable features
+
+```{r}
+top10 <- head(VariableFeatures(HH30F), 10)
+```
+
+#plot variable features
+
+```{r}
+
+variable_feat_plot <- VariableFeaturePlot(HH30F)
+labelled_variable_feat_plot <- LabelPoints(plot = variable_feat_plot, points = top10, repel = TRUE, xnudge = 0, ynudge = 0)
+
+```
+
+#view plot
+
+```{r}
+variable_feat_plot +labelled_variable_feat_plot
+```
+
+# scale data so values are workable and are of same meaning
+
+```{r}
+all.genes <- rownames(HH30F)
+HH30F <- ScaleData(HH30F, features = all.genes)
+```
+
+
+#run a principle component analysis to get our principle components
+
+```{r}
+HH30F <- RunPCA(HH30F, features = VariableFeatures(object = HH30F))
+```
+
+#look at first 5 PCAs
+
+```{r}
+print(HH30F[["pca"]], dims = 1:5, nFeatures = 5)
+```
+
+#do a heatmap to look at first PC
+
+```{r}
+
+DimHeatmap(HH30F, dims = 1, cells = 500, balanced = TRUE, fast = FALSE) + scale_fill_gradientn(colours = my_cols)
+
+
+
+```
+```{r}
+
+PC1t5 <- DimHeatmap( HH30F, dims = 1:5,cells = 500, balanced  = TRUE, fast = FALSE, combine = FALSE)
+
+PC1t5_col <- lapply(PC1t5, function(p) p + scale_fill_gradientn(colours = my_cols))
+
+wrap_plots(plotlist = PC1t5_col, nrow = 3, ncol = 2)
+
+
+```
+
+#checkpoint after PCA
+
+```{r}
+
+saveRDS(HH30F, file = "sObj_PCA_2.RDS")
+
+```
+
+
+#elbow plot to determine dimensionality for the cluster map
+
+```{r}
+Elbow_plot <- ElbowPlot(HH30F, ndims = 40)
+Elbow_plot
+```
+
+
+
+# cluster cells and find the neighbours of the clusters
+
+```{r}
+HH30F <- FindNeighbors(HH30F, dims = 1:30)
+HH30F <- FindClusters(HH30F, resolution = 0.8)
+
+```
+
+#create the UMAP data - this the clusters the cells with common gene expression and links it to the neighbours
+
+```{r}
+
+HH30F <- RunUMAP(HH30F, dims = 1:30)
+```
+
+#visualise the UMAP
+
+```{r}
+
+
+umap_HH30 <- DimPlot(HH30F, reduction = "umap", label = TRUE, label.size = 10, repel = TRUE)
+
+umap_HH30
+
+
+png(file= "umap_HH30F.png", width=2000, height=1500) 
+DimPlot(HH30F, reduction = "umap", label = TRUE, label.size = 10, repel = TRUE) 
+dev.off()
+
+```
+
+#save RDS
+
+```{r}
+saveRDS(HH30F, file = "sObj_UMAP_3.rds")
+```
+
+
+
+# find markers for every cluster compared to all remaining cells, report only the positive ones, write to excel file
+```{r}
+markers <- FindAllMarkers(HH30F, only.pos = TRUE)
+markers %>%
+    group_by(cluster) %>%
+    dplyr::filter(avg_log2FC > 1)
+
+
+write.xlsx(markers, file = "HH30F_markers.xlsx")
+
+```
+
+
+#filter out "ENSGAL" genes
+
+```{r}
+
+filtered_markers <- markers %>% filter(!startsWith(gene, "ENSGAL"))
+
+```
+
+
+
+#write the markers to a workbook
+
+```{r}
+
+cluster_workbook(filtered_markers, 16)
+
+```
+
+
+
+#several tests for differential expression - set parameter test.use = "ROC" bc it will return the classification power for any individual marker
+#find differential expression of markers for cluster 0 and write to excel file
+
+```{r}
+cluster0.markers <- FindMarkers(HH30F, ident.1 = 0, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+
+write.xlsx(cluster0.markers, file = "HH30F_c0_markers.xlsx")
+```
+
+
+```{r}
+
+saveRDS(HH30F, file = "sObj_Markers_4.RDS")
+
+```
+
+
+
+#look for marker expression throughout UMAP plot to identify clusters
+
+```{r}
+
+Progenitor_markers <- FeaturePlot(HH30F, features = c("ATOH7", "HES6"))
+
+amacrine <- FeaturePlot(HH30F, features = c("TFAP2A", "TFAP2B", "PROX1", "LHX1"))
+
+early_cone_photoreceptors <- FeaturePlot(HH30F, features = c("RAX2", "RXRG", "CRX"))
+
+neural_retina <- FeaturePlot(HH30F, features = c("SMOC1", "ALDH1A3", "VAX1", "VSX2", "CDH2"))
+
+related_to_RPE_and_RPC <- FeaturePlot(HH30F, features = c("TYR", "TYRP", "WNT2B", "BCN"))
+
+retinal_ganglion_cells <- FeaturePlot(HH30F, features = c("ELAVL4", "NEFL", "NEFM", "CL12", "GAP43", "STMN", "POU4F3", "SATB1", "SATB2", "PAX6", "RBPMS2"))
+
+retinal_progenitor_cells <- FeaturePlot(HH30F, features = c("ZIC1", "VSX2", "PAX6", "VAX1", "SMOC1", "PMPR1B", "ATOH7", "HES6"))
+
+endothelial_and_blood <- FeaturePlot(HH30F, features = c("VWF", "KDR"))
+
+POM <- FeaturePlot(HH30F, features = c("PITX2", "EMX2", "LMX1B", "PAX7", "ALX1", "LMX1B", "ALX4", "DCN", "LTBP1", "COL3A1"))
+
+RPE <- FeaturePlot(HH30F, features = c("OTX2", "MITF", "TYR", "TYRP1", "PITX2", "PMEL", "CDH1"))
+
+pioneer <- FeaturePlot(HH30F, features = c("PAX2", "CLYBL", "NTN1", "MET", "EGF", "DVL1", "GALNT6", "FOXP2", "CDH2"))
+
+blood <- FeaturePlot(HH30F, features = c("HBE1", "HBBA", "HBAD", "HBA1", "HBE", "HBZ", "HBBR", "SLC4A1", "SLC39A8", "TSPO2"))
+
+cmz <- FeaturePlot(HH30F, features = c("COL9A1", "CPAMD8", "MECOM", "OPTC", "RELN"))
+
+
+
+```
+
+
+#heatmap of top 5 genes
+
+```{r}
+Progenitor_markers
+
+amacrine 
+
+early_cone_photoreceptors 
+
+neural_retina 
+
+related_to_RPE_and_RPC 
+
+retinal_ganglion_cells 
+
+retinal_progenitor_cells
+
+endothelial_and_blood 
+
+POM 
+
+RPE 
+
+pioneer 
+
+blood 
+
+cmz 
+
+```
+
+
+
+
+#top 5 genes for each cluster, sorted largest to smalled avg log and less than 0.05 for p val adj
+```{r}
+top5.genes <- top5(HH30F)
+
+top5.genes
+``` 
+
+
+#heatmap for the top 5 genes per cluster
+
+```{r}
+top5heatmap <- DoHeatmap(HH30F, features = top5.genes$gene)
+
+options(bitmapType = "cairo")
+png("top5genes.png", width = 2400, height = 2000, res = 200, type = "cairo")
+DoHeatmap(HH30F, features = top5.genes$gene)
+dev.off()
+
+```
+
+
+
+```{r}
+
+setwd("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30F")
+HH30F <- readRDS("sObj_Markers_4F.RDS")
+
+setwd("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30G")
+HH30G <- readRDS("sObj_Markers_4G.RDS")
+file.edit("HH30G_analysis.Rmd")
+
+rm("filtered_markers", "HH30G", "markers", "top5.genes")
+setwd("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30H")
+HH30H <- readRDS("sObj_Markers_4")
+
+
+rm("filtered_markers", "HH30H", "markers", "top5.genes")
+setwd("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30T")
+HH30T <- readRDS("")
+file.edit("HH30G_analysis.Rmd")
+```
+
+
+
+
+```{r}
+obj.list <- list(s1 = HH30F, s2 = HH30G, s3 = HH30H, s4 = HH30T)
+combined <- merge(
+  x = obj.list[[1]],
+  y = obj.list[2:4],
+  add.cell.ids = names(obj.list)
+)
+
+combined$batch <- combined$orig.ident
+
+
+combined <- NormalizeData(combined)
+combined <- FindVariableFeatures(combined)
+combined <- ScaleData(combined)
+combined <- RunPCA(combined)
+
+# Harmony integration
+combined <- RunHarmony(
+  object = combined,
+  group.by.vars = "batch",
+  
+)
+
+# Use Harmony embeddings for neighbors, clustering, UMAP
+combined <- FindNeighbors(combined, reduction = "harmony", dims = 1:30)
+combined <- FindClusters(combined)
+combined <- RunUMAP(combined, reduction = "harmony", dims = 1:30)
+
+
+```
+

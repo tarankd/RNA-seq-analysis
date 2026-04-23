@@ -1,0 +1,6 @@
+"0","markers <- FindAllMarkers(HH28A, only.pos = TRUE, group.by = ""RNA_snn_res.0.7"")
+markers %>%
+    group_by(cluster) %>%
+    dplyr::filter(avg_log2FC > 1)
+"
+"0",""

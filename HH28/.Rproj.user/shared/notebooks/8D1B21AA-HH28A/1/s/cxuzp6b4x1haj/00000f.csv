@@ -1,0 +1,5 @@
+"0",""
+"0","mt_genes_scatter_plot1 <- FeatureScatter(HH28A, feature1 = ""nCount_RNA"", feature2 = ""percent.mt"")"
+"0","features_scatter_plot2 <- FeatureScatter(HH28A, feature1 = ""nCount_RNA"", feature2 = ""nFeature_RNA"")"
+"0",""
+"0","mt_genes_scatter_plot1 + features_scatter_plot2"
