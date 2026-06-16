@@ -114,7 +114,6 @@ return(clusters)
 }
 
 
-
 ```
 
 #load scRNA-seq data set 
@@ -150,12 +149,49 @@ QC_metric_violin_plot
 
 ```
 
-#feature scatter used to visualise the feature-feature relationships but can be used for any relationship
+
+
+
+#feature
+```{r}
+QC_mf<- VlnPlot(HH30F, features = "nFeature_RNA")
+QC_mf
+```
 
 ```{r}
+QC_metric_feature<- VlnPlot(HH30F, features = "nFeature_RNA", y.max = 1000)
+QC_metric_feature
+```
 
-mt_genes_scatter_plot1 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "percent.mt")
-features_scatter_plot2 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+#counts
+```{r}
+QC_mc<- VlnPlot(HH30F, features = "nCount_RNA")
+QC_mc
+```
+
+```{r}
+QC_metric_counts<- VlnPlot(HH30F, features = "nCount_RNA", y.max = 2500)
+QC_metric_counts
+```
+
+#mitochondrial RNA
+```{r}
+QC_mm<- VlnPlot(HH30F, features = "percent.mt")
+QC_mm
+```
+
+```{r}
+QC_metric_mito<- VlnPlot(HH30F, features = "percent.mt", y.max = 15)
+QC_metric_mito
+```
+
+
+#feature scatter used to visualise the feature-feature relationships but can be used for any relationship
+
+```{r}h
+
+mt <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "percent.mt")
+features <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
 
 mt_genes_scatter_plot1 + features_scatter_plot2
 ```
@@ -175,23 +211,32 @@ HH30F <- subset(HH30F, subset = nFeature_RNA > 250 &
                                 nCount_RNA   >1000  
                 )
 
-mt_genes_scatter_plot3 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "percent.mt")
-features_scatter_plot4 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+mt2 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "percent.mt")
+features2 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
 
-mt_genes_scatter_plot3 + features_scatter_plot4
+mt2+ features2
 ```
 #compare mitchondrial RNA subset data
 
-```{r}
+```{r}h
 mt_genes_scatter_plot1 + mt_genes_scatter_plot3
 ```
 
 #compare features subset data
 
-```{r}
+```{r}h
 features_scatter_plot2 + features_scatter_plot4
 
 ```
+
+
+#nuclei after subset
+
+```{r}
+HH30F
+```
+
+
 #doubletFinder
 
 ```{r}
@@ -202,17 +247,33 @@ HH30F <- findDoublets(HH30F)
 ```
 
 
+
+
+
+
+
+```{r}
+doublet <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "DF.classifications")
+
+doublet
+```
+
 ```{r}
 HH30F <- subset(HH30F, subset = DF.classifications != "Doublet" )
 ```
 
 
+```{r}
+ doubsub<- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "DF.classifications")
+doubsub
+```
+
 
 #plot after doublet finder comparison
 
 ```{r}
-mt_genes_scatter_plot5 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "percent.mt")
-features_scatter_plot6 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+mt3<- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "percent.mt")
+features3 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
 
 ```
 
@@ -220,16 +281,19 @@ features_scatter_plot6 <- FeatureScatter(HH30F, feature1 = "nCount_RNA", feature
 
 ```{r}
 
-mt_genes_scatter_plot1 + mt_genes_scatter_plot3 + mt_genes_scatter_plot5
+mt + mt2 + mt3
 
 ```
 
 ```{r}
-
-features_scatter_plot2 + features_scatter_plot4 + features_scatter_plot6
+features + features2 + features3
 ```
 
+#nuceli after removal
 
+```{r}
+HH30F
+```
 
 
 #checkpoint after QC 
@@ -505,66 +569,129 @@ top5.genes
 ```{r}
 top5heatmap <- DoHeatmap(HH30F, features = top5.genes$gene)
 
+```
+
+
+
+```{r}
+
 options(bitmapType = "cairo")
-png("top5genes.png", width = 2400, height = 2000, res = 200, type = "cairo")
-DoHeatmap(HH30F, features = top5.genes$gene)
+png("top5genes.png", width = 9000, height = 4000, res = 200, type = "cairo") 
+p <- DoHeatmap(HH30F, group.by = "RNA_snn_res.0.8", features = top5.genes$gene, label = FALSE) 
+p <- p + theme(
+  axis.text = element_text(size = 20),         #gene names
+  legend.title = element_text(size = 20),      #identity and expression text size
+  legend.text = element_text(size = 20),       #key label size
+  legend.key.size = unit(1.5, "cm"))           #box size
+  
+wrap_plots(p)
+
+dev.off()
+```
+
+
+#assign cluster identity
+
+
+```{r}
+new.cluster.ids <- c("NR", "NR2", "NR3", "RPE", "Blood", "CMZ", "RPE2", "Pioneer", "8","RPC","RGC","ECP", "EC", "POM", "14")
+
+
+Idents(HH30F) <- HH30F@meta.data$RNA_snn_res.0.8
+
+names(new.cluster.ids) <- levels(HH30F)
+
+HH30F <- RenameIdents(HH30F, new.cluster.ids)
+DimPlot(HH30F, reduction = "umap", label = TRUE, label.size = 8) + xlab("UMAP 1") + ylab("UMAP 2") +
+    theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size = 10)))
+```
+
+
+
+
+```{r}
+
+png(file= "umap_HH30F.png", width=3500, height= 2100, res = 200, type = "cairo") 
+DimPlot(HH30F, reduction = "umap", label = TRUE, label.size = 8) + xlab("UMAP 1") + ylab("UMAP 2") +
+    theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size = 10)))
+dev.off()
+
+
+```
+
+
+
+```{r}
+
+saveRDS(HH30F, file = "sObj_Markers_4.RDS")
+
+```
+
+
+
+
+#segregate list of cell cycle markers into G2/M and S
+
+```{r}
+s.genes <- cc.genes$s.genes
+g2m.genes <- cc.genes$g2m.genes
+```
+
+#assign cell-cycle scores
+
+```{r}
+HH30F <- CellCycleScoring(HH30F, s.features = s.genes, g2m.features = g2m.genes, set.ident = TRUE)
+
+```
+
+#visualise distribution
+```{r}
+
+png("cell_cycle_distribution.png", width = 2600, height = 2000)
+
+plots <- RidgePlot(HH30F, 
+                   features = c("PCNA","TOP2A","MCM6","MKI67"), ncol = 2, 
+                   cols = c("S" = "orange", "G1" = "forestgreen", "G2M" = "steelblue4"), 
+                   combine = FALSE)
+
+plots <- lapply(plots, function(p) p + 
+                  theme(plot.title = element_text(size = 40),
+                        axis.text = element_text(size = 30),
+                        axis.title.x = element_text(size = 30),
+                        axis.title.y = element_text(size = 30),
+                        legend.text = element_text(size = 30)) + 
+                  guides(colour = guide_legend(override.aes = list(size = 30))))
+                
+wrap_plots(plots, ncol = 2)   
+
+dev.off()
+
+```
+
+#update how clusters are ordered in metadata to ensure uniform ordering across all sample reports
+```{r}
+# Update the identity of the Seurat object and define the new order of groups
+HH30F@meta.data$Phase <- factor(HH30F@meta.data$Phase, levels = c("G1", "S", "G2M"))
+
+
+# Reassign identity with the new order
+Idents(HH30F) <- HH30F@meta.data$Phase
+```
+
+
+
+```{r}
+
+png("cell_cycle_plot.png", width = 1600, height = 1000)
+DimPlot(HH30F, cols = c("S" = "orange", "G1" = "forestgreen", "G2M" = "steelblue4")) +
+    theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size = 10)))
 dev.off()
 
 ```
 
 
-
 ```{r}
-
-setwd("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30F")
-HH30F <- readRDS("sObj_Markers_4F.RDS")
-
-setwd("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30G")
-HH30G <- readRDS("sObj_Markers_4G.RDS")
-file.edit("HH30G_analysis.Rmd")
-
-rm("filtered_markers", "HH30G", "markers", "top5.genes")
-setwd("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30H")
-HH30H <- readRDS("sObj_Markers_4")
-
-
-rm("filtered_markers", "HH30H", "markers", "top5.genes")
-setwd("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30T")
-HH30T <- readRDS("")
-file.edit("HH30G_analysis.Rmd")
+saveRDS(HH30F, file = "sObj_cell_cycle_5.RDS")
 ```
 
-
-
-
-```{r}
-obj.list <- list(s1 = HH30F, s2 = HH30G, s3 = HH30H, s4 = HH30T)
-combined <- merge(
-  x = obj.list[[1]],
-  y = obj.list[2:4],
-  add.cell.ids = names(obj.list)
-)
-
-combined$batch <- combined$orig.ident
-
-
-combined <- NormalizeData(combined)
-combined <- FindVariableFeatures(combined)
-combined <- ScaleData(combined)
-combined <- RunPCA(combined)
-
-# Harmony integration
-combined <- RunHarmony(
-  object = combined,
-  group.by.vars = "batch",
-  
-)
-
-# Use Harmony embeddings for neighbors, clustering, UMAP
-combined <- FindNeighbors(combined, reduction = "harmony", dims = 1:30)
-combined <- FindClusters(combined)
-combined <- RunUMAP(combined, reduction = "harmony", dims = 1:30)
-
-
-```
 

@@ -153,7 +153,7 @@ QC_metric_violin_plot
 
 #feature scatter used to visualise the feature-feature relationships but can be used for any relationship
 
-```{r}
+```{r}h
 
 mt_genes_scatter_plot1 <- FeatureScatter(HH30T, feature1 = "nCount_RNA", feature2 = "percent.mt")
 features_scatter_plot2 <- FeatureScatter(HH30T, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
@@ -176,6 +176,9 @@ HH30T <- subset(HH30T, subset = nFeature_RNA > 250 &
                                 nCount_RNA   >1000  
                 )
 
+```
+
+```{r}h
 mt_genes_scatter_plot3 <- FeatureScatter(HH30T, feature1 = "nCount_RNA", feature2 = "percent.mt")
 features_scatter_plot4 <- FeatureScatter(HH30T, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
 
@@ -183,16 +186,24 @@ mt_genes_scatter_plot3 + features_scatter_plot4
 ```
 #compare mitchondrial RNA subset data
 
-```{r}
+```{r}h
 mt_genes_scatter_plot1 + mt_genes_scatter_plot3
 ```
 
 #compare features subset data
 
-```{r}
+```{r}h
 features_scatter_plot2 + features_scatter_plot4
 
 ```
+
+
+#nuceli after subset
+
+```{r}
+HH30T
+```
+
 #doubletFinder
 
 ```{r}
@@ -211,7 +222,7 @@ HH30T <- subset(HH30T, subset = DF.classifications != "Doublet" )
 
 #plot after doublet finder comparison
 
-```{r}
+```{r}h
 mt_genes_scatter_plot5 <- FeatureScatter(HH30T, feature1 = "nCount_RNA", feature2 = "percent.mt")
 features_scatter_plot6 <- FeatureScatter(HH30T, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
 
@@ -219,19 +230,23 @@ features_scatter_plot6 <- FeatureScatter(HH30T, feature1 = "nCount_RNA", feature
 
 #compare mito RNA before and after subset and after doublet finder
 
-```{r}
+```{r}h
 
 mt_genes_scatter_plot1 + mt_genes_scatter_plot3 + mt_genes_scatter_plot5
 
 ```
 
-```{r}
+```{r}h
 
 features_scatter_plot2 + features_scatter_plot4 + features_scatter_plot6
 ```
 
 
+#nuceli after removal
 
+```{r}
+HH30T
+```
 
 #checkpoint after QC 
 
@@ -498,9 +513,132 @@ top5.genes
 ```{r}
 top5heatmap <- DoHeatmap(HH30T, features = top5.genes$gene)
 
+
+```
+
+
+
+
+```{r}
+
 options(bitmapType = "cairo")
-png("top5genes.png", width = 2400, height = 2000, res = 200, type = "cairo")
-DoHeatmap(HH30T, features = top5.genes$gene)
+png("top5genes.png", width = 9000, height = 4000, res = 200, type = "cairo") 
+p <- DoHeatmap(HH30T, group.by = "RNA_snn_res.0.8", features = top5.genes$gene, label = FALSE) 
+p <- p + theme(
+  axis.text = element_text(size = 20),         #gene names
+  legend.title = element_text(size = 20),      #identity and expression text size
+  legend.text = element_text(size = 20),       #key label size
+  legend.key.size = unit(1.5, "cm"))           #box size
+  
+wrap_plots(p)
+
+dev.off()
+```
+
+
+
+#assign cluster identity
+
+
+```{r}
+new.cluster.ids <- c("NR", "NR2", "RPE", "NR3", "4", "RPC", "RPE2", "CMZ", "Pioneer","9","RGC", "ECP", "EA/HC", "EC", "POM", "Blood" )
+
+
+Idents(HH30T) <- HH30T@meta.data$RNA_snn_res.0.8
+
+names(new.cluster.ids) <- levels(HH30T)
+
+HH30T <- RenameIdents(HH30T, new.cluster.ids)
+DimPlot(HH30T, reduction = "umap", label = TRUE, label.size = 8) + xlab("UMAP 1") + ylab("UMAP 2") +
+    theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size = 10)))
+```
+
+
+
+
+```{r}
+
+png(file= "umap_HH30T.png", width=3000, height=1500, res = 200, type = "cairo") 
+DimPlot(HH30T, reduction = "umap", label = TRUE, label.size = 8) + xlab("UMAP 1") + ylab("UMAP 2") +
+    theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size = 10)))
+dev.off()
+
+
+```
+
+
+
+```{r}
+
+saveRDS(HH30T, file = "sObj_Markers_4.RDS")
+
+```
+
+
+
+
+#segregate list of cell cycle markers into G2/M and S
+
+```{r}
+s.genes <- cc.genes$s.genes
+g2m.genes <- cc.genes$g2m.genes
+```
+
+#assign cell-cycle scores
+
+```{r}
+HH30T <- CellCycleScoring(HH30T, s.features = s.genes, g2m.features = g2m.genes, set.ident = TRUE)
+
+```
+
+#visualise distribution
+```{r}
+
+png("cell_cycle_distribution.png", width = 2600, height = 2000)
+
+plots <- RidgePlot(HH30T, 
+                   features = c("PCNA","TOP2A","MCM6","MKI67"), ncol = 2, 
+                   cols = c("S" = "orange", "G1" = "forestgreen", "G2M" = "steelblue4"), 
+                   combine = FALSE)
+
+plots <- lapply(plots, function(p) p + 
+                  theme(plot.title = element_text(size = 40),
+                        axis.text = element_text(size = 30),
+                        axis.title.x = element_text(size = 30),
+                        axis.title.y = element_text(size = 30),
+                        legend.text = element_text(size = 30)) + 
+                  guides(colour = guide_legend(override.aes = list(size = 30))))
+                
+wrap_plots(plots, ncol = 2)   
+
 dev.off()
 
 ```
+
+#update how clusters are ordered in metadata to ensure uniform ordering across all sample reports
+```{r}
+# Update the identity of the Seurat object and define the new order of groups
+HH30T@meta.data$Phase <- factor(HH30T@meta.data$Phase, levels = c("G1", "S", "G2M"))
+
+
+# Reassign identity with the new order
+Idents(HH30T) <- HH30T@meta.data$Phase
+```
+
+
+
+```{r}
+
+png("cell_cycle_plot.png", width = 1600, height = 1000)
+DimPlot(HH30T, cols = c("S" = "orange", "G1" = "forestgreen", "G2M" = "steelblue4")) +
+    theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size = 10)))
+dev.off()
+
+```
+
+
+```{r}
+saveRDS(HH30T, file = "sObj_cell_cycle_5.RDS")
+```
+
+
