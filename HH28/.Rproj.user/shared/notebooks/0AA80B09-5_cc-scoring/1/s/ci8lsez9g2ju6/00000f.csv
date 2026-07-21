@@ -1,0 +1,4 @@
+"0",""
+"0","png(""cell_cycle_plot.png"", width = 1600, height = 1000)"
+"0","DimPlot(HH30G, cols = c(""S"" = ""orange"", ""G1"" = ""forestgreen"", ""G2M"" = ""steelblue4"")) +"
+"0","    theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size = 10)))"

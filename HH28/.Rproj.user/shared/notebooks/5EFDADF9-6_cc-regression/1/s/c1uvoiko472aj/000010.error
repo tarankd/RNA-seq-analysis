@@ -1,0 +1,1 @@
+{"frames":[{"func":"ScaleData(HH28A, vars.to.regress = c(\"S.Score\", \"G2M.Score\"), \n    features = VariableFeatures(HH28A))","file":"","line_number":0,"end_line_number":0,"character_number":0,"end_character_number":0}],"message":"Error: object 'HH28A' not found\n"}

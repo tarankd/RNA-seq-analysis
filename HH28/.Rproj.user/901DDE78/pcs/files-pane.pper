@@ -2,8 +2,8 @@
     "sortOrder": [
         {
             "columnIndex": 2,
-            "ascending": true
+            "ascending": false
         }
     ],
-    "path": "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/scripts"
+    "path": "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28"
 }

@@ -1,0 +1,127 @@
+---
+title: "dimension_reduction"
+author: "Taran"
+date: "2026-07-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r} 
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(ggplot2)
+library(DoubletFinder)
+library(tidyverse)
+library(RColorBrewer)
+library(cowplot)
+library(openxlsx)
+
+# colour palette 
+my_cols <- brewer.pal(n=5, "Spectral")
+
+
+## feature and cell count function
+
+FeatCellCount <- function(seuratObj){dim(seuratObj)
+              }
+
+
+#compare umap plots for 5 resolutions, select the one that provides an accurate representation of the biological data
+
+umap_trial <- function(sObj, resolutions = c(0.6, 0.7, 0.8, 0.9, 1),
+                           dims, label.size = 10, repel = TRUE){
+  
+  plots <- list()
+  objects <- list()
+  
+  for(res in resolutions){
+    
+    
+    objres <- FindClusters(sObj, resolution = res)
+    objres <- RunUMAP(objres, dims = dims)
+    
+    
+    
+    plots[[as.character(res)]] <- DimPlot(
+      objres, reduction = "umap", label = TRUE, label.size = 10, 
+      repel = TRUE) + ggtitle(paste0("Resolution = ", res))
+    
+    objects[[as.character(res)]] <- objres
+  }
+  return(list(plots = plots, objects = objects))
+}
+
+
+
+
+```
+
+#elbow plot to determine dimensionality for the cluster map
+
+```{r}
+Elbow_plot <- ElbowPlot(HH28C, ndims = 40)
+Elbow_plot
+```
+
+
+
+# find the neighbours 
+
+```{r}
+HH28C <- FindNeighbors(HH28C, dims = 1:30)
+
+```
+
+#find clusters
+```{r}
+HH28C <- FindClusters(HH28C, resolution = c(0.6, 0.7, 0.8, 0.9))
+
+```
+
+
+
+#create the UMAP data - this the clusters the cells with common gene expression and links it to the neighbours
+
+```{r}
+
+HH28C <- RunUMAP(HH28C, dims = 1:30)
+```
+
+#visualise the UMAP
+
+```{r}
+
+res <- "RNA_snn_res."
+nums = c(0.6, 0.7, 0.8, 0.9)
+paste0(res, nums)
+
+options(bitmapType = "cairo")
+png("umap_trial.png", width = 2400, height = 2000, res = 200, type = "cairo")
+DimPlot(HH28C, reduction = "umap", group.by = paste0(res, nums), label = TRUE, label.size = 6, repel = TRUE)
+dev.off()
+
+
+
+```
+
+#save as png
+```{r}
+
+
+
+png(file= "umap_HH28C.png", width=2000, height=1500, res = 200, type = "cairo") 
+DimPlot(HH28C, reduction = "umap", group.by = "RNA_snn_res.0.7", label = TRUE, label.size = 5, repel = TRUE) 
+dev.off()
+
+```
+
+#save RDS
+
+```{r}
+saveRDS(HH28C, file = "sObj_UMAP_3.RDS")
+```

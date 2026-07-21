@@ -1,0 +1,275 @@
+---
+title: "setup seurat object"
+output: html_document
+date: "2025-11-25"
+fig_width: 6
+fig_height: 4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#load all libaries required for this script
+
+```{r} 
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(ggplot2)
+library(DoubletFinder)
+library(tidyverse)
+library(RColorBrewer)
+library(cowplot)
+library(openxlsx)
+
+# colour palette 
+my_cols <- brewer.pal(n=5, "Spectral")
+
+
+## feature and cell count function
+
+FeatCellCount <- function(seuratObj){dim(seuratObj)
+              }
+  
+  
+##create function for doublet finder 
+
+
+preDoublets <- function(seuratObj){  
+    seuratObj <- NormalizeData(seuratObj)
+    
+    seuratObj <- ScaleData(seuratObj)
+    seuratObj <- FindVariableFeatures(seuratObj, 
+                                      x.low.cutoff = 0.0125, 
+                                      y.cutoff = 0.25, 
+                                      do.plot=FALSE)
+    seuratObj <- RunPCA(seuratObj, pc.genes = seuratObj@var.genes, pcs.print = 0)
+    
+ 
+    return(seuratObj)
+}
+
+
+
+findDoublets <- function(seuratObj, n_pcs=30){
+    
+   
+    nExp_poi  <- round(0.15*nrow(seuratObj@meta.data))
+    
+    print('yay!')
+  
+    seuratObj <- doubletFinder(seuratObj, 
+                                  PCs = 1:30, 
+                                  pN = 0.25, 
+                                  pK = 0.01, 
+                                  nExp = nExp_poi, 
+                                  sct=FALSE)
+    
+    
+    
+     seuratObj@meta.data <- seuratObj@meta.data %>% 
+        rename_at(vars(starts_with("DF.classifications")), 
+                  funs(str_replace(., ".*", "DF.classifications"))) %>%
+        rename_at(vars(starts_with("pANN")), 
+                  funs(str_replace(., ".*", "pANN")))
+    
+       
+  
+        return(seuratObj) 
+    
+}
+
+
+```
+
+#load scRNA-seq data set 
+
+```{r}
+
+HH28C.data <- Read10X(data.dir = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/results/Sample_3_Results/outs/filtered_feature_bc_matrix/")
+```
+
+#assign to seurat object
+
+```{r}
+
+HH28C <- CreateSeuratObject(counts = HH28C.data, project = "HH28", min.cells = 3, min.features = 200)
+HH28C
+
+
+```
+
+
+#add column to metadata to assign the percentage of mitochondrial dna to
+
+```{r}
+HH28C[["percent.mt"]] <- PercentageFeatureSet(HH28C, pattern = "^MT-")
+```
+
+#visualise QC metrics as violin plot 
+
+```{r} 
+#only for paper, rest is better for accurate sub-setting
+QC_metric<- VlnPlot(HH28C, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+QC_metric
+
+```
+
+
+#feature
+```{r}
+QC_mf<- VlnPlot(HH28C, features = "nFeature_RNA")
+QC_mf
+```
+
+```{r}
+QC_metric_feature<- VlnPlot(HH28C, features = "nFeature_RNA", y.max = 1000)
+QC_metric_feature
+```
+
+#counts
+```{r}
+QC_mc<- VlnPlot(HH28C, features = "nCount_RNA")
+QC_mc
+```
+
+```{r}
+QC_metric_counts<- VlnPlot(HH28C, features = "nCount_RNA", y.max = 1500)
+QC_metric_counts
+```
+
+#mitochondrial RNA
+```{r}
+QC_mm<- VlnPlot(HH28C, features = "percent.mt")
+QC_mm
+```
+
+```{r}
+QC_metric_mito<- VlnPlot(HH28C, features = "percent.mt", y.max = 1000)
+QC_metric_mito
+```
+
+
+
+#feature scatter used to visualise the feature-feature relationships but can be used for any relationship
+
+```{r}
+
+mt<- FeatureScatter(HH28C, feature1 = "nCount_RNA", feature2 = "percent.mt")
+features <- FeatureScatter(HH28C, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+mtfeat <- FeatureScatter(HH28C, feature1 = "nFeature_RNA", feature2 = "percent.mt")
+
+mt+ features
+
+mtfeat
+```
+
+
+
+
+
+
+#subset data to look at specific parameters bc values that are out of scope aren't important and therefore not needed in the graph (??? help)
+#remove mitochondrial genes
+
+
+```{r}
+HH28C <- subset(HH28C, subset = nFeature_RNA > 550 & 
+                                percent.mt   <5     &
+                                nCount_RNA   >1300  
+                )
+
+mt2 <- FeatureScatter(HH28C, feature1 = "nCount_RNA", feature2 = "percent.mt")
+feat2 <- FeatureScatter(HH28C, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+mt2 + feat2
+
+feat2 <- VlnPlot(HH28C, features = "nFeature_RNA", y.max = 4000)
+
+feat2
+
+count <- VlnPlot(HH28C, features = "nCount_RNA", y.max = 4000)
+
+count
+```
+#compare mitchondrial RNA subset data
+
+```{r}
+mt + mt2
+```
+
+#compare features subset data
+
+```{r}
+feat + feat2
+
+```
+
+
+#nuclei after subset
+
+```{r}
+HH28C
+FeatCellCount(HH28C)
+```
+
+#doubletFinder
+
+```{r}
+
+HH28C <- preDoublets(HH28C)
+HH28C <- findDoublets(HH28C)
+
+```
+
+```{r}
+doublet <- FeatureScatter(HH28C, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "DF.classifications")
+
+doublet
+```
+
+```{r}
+HH28C <- subset(HH28C, subset = DF.classifications != "Doublet" )
+```
+
+
+```{r}
+ doubsub<- FeatureScatter(HH28C, feature1 = "nCount_RNA", feature2 = "nFeature_RNA", group.by = "DF.classifications")
+doubsub
+```
+
+#plot after doublet finder comparison
+
+```{r}
+mt3<- FeatureScatter(HH28C, feature1 = "nCount_RNA", feature2 = "percent.mt")
+feat3 <- FeatureScatter(HH28C, feature1 = "nCount_RNA", feature2 = "nFeature_RNA")
+
+```
+
+#compare mito RNA before and after subset and after doublet finder
+
+```{r}
+
+mt + mt2 + mt3
+
+```
+
+```{r}
+
+feat + feat2 + feat3
+```
+
+
+#nuclei after removal
+
+```{r}
+HH28C
+```
+
+
+#checkpoint after QC 
+
+```{r}
+saveRDS(HH28C, file = "sObj_QC_1.RDS")
+```

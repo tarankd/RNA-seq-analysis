@@ -1,0 +1,100 @@
+---
+title: "cell-cycle-scoring"
+author: "Taran"
+date: "2026-07-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r} 
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(ggplot2)
+library(DoubletFinder)
+library(tidyverse)
+library(RColorBrewer)
+library(cowplot)
+library(openxlsx)
+
+# colour palette 
+my_cols <- brewer.pal(n=5, "Spectral")
+
+
+## feature and cell count function
+
+FeatCellCount <- function(seuratObj){dim(seuratObj)
+              }
+
+
+```
+
+
+#segregate list of cell cycle markers into G2/M and S
+
+```{r}
+s.genes <- cc.genes$s.genes
+g2m.genes <- cc.genes$g2m.genes
+```
+
+#assign cell-cycle scores
+
+```{r}
+HH28C <- CellCycleScoring(HH28C, s.features = s.genes, g2m.features = g2m.genes, set.ident = TRUE)
+
+```
+
+#visualise distribution
+```{r}
+
+png("cell_cycle_distribution.png", width = 2600, height = 2000)
+
+plots <- RidgePlot(HH28C, 
+                   features = c("PCNA","TOP2A","MCM6","MKI67"), ncol = 2, 
+                   cols = c("S" = "orange", "G1" = "forestgreen", "G2M" = "steelblue4"), 
+                   combine = FALSE)
+
+plots <- lapply(plots, function(p) p + 
+                  theme(plot.title = element_text(size = 40),
+                        axis.text = element_text(size = 30),
+                        axis.title.x = element_text(size = 30),
+                        axis.title.y = element_text(size = 30),
+                        legend.text = element_text(size = 30)) + 
+                  guides(colour = guide_legend(override.aes = list(size = 30))))
+                
+wrap_plots(plots, ncol = 2)   
+
+dev.off()
+
+```
+
+
+#update how clusters are ordered in metadata to ensure uniform ordering across all sample reports
+```{r}
+# Update the identity of the Seurat object and define the new order of groups
+HH28C@meta.data$Phase <- factor(HH28C@meta.data$Phase, levels = c("G1", "S", "G2M"))
+
+
+# Reassign identity with the new order
+Idents(HH28C) <- HH28C@meta.data$Phase
+```
+
+
+
+```{r}
+
+png("cell_cycle_plot.png", width = 1200, height = 1000)
+DimPlot(HH28C, cols = c("S" = "orange", "G1" = "forestgreen", "G2M" = "steelblue4")) +
+    theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size = 10)))
+dev.off()
+
+```
+
+
+```{r}
+saveRDS(HH28C, file = "sObj_cell_cycle_5.RDS")
+```
+

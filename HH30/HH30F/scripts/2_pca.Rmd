@@ -1,0 +1,117 @@
+---
+title: "pre-processing"
+author: "Taran"
+date: "2026-07-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r} 
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(ggplot2)
+library(DoubletFinder)
+library(tidyverse)
+library(RColorBrewer)
+library(cowplot)
+library(openxlsx)
+
+# colour palette 
+my_cols <- brewer.pal(n=5, "Spectral")
+
+
+## feature and cell count function
+
+FeatCellCount <- function(seuratObj){dim(seuratObj)
+              }
+  
+```
+
+#normalise the data
+
+```{r}
+HH28D <- NormalizeData(HH28D, normalization.method = "LogNormalize", scale.factor = 10000)
+```
+
+#find the variable features
+
+
+```{r}
+HH28D <- FindVariableFeatures(HH28D, selection.method = "vst", nfeatures = 2000)
+```
+
+#identify top 10 variable features
+
+```{r}
+top10 <- head(VariableFeatures(HH28D), 10)
+```
+
+#plot variable features
+
+```{r}
+
+variable_feat_plot <- VariableFeaturePlot(HH28D)
+labelled_variable_feat_plot <- LabelPoints(plot = variable_feat_plot, points = top10, repel = TRUE, xnudge = 0, ynudge = 0)
+
+```
+
+#view plot
+
+```{r}
+variable_feat_plot +labelled_variable_feat_plot
+```
+
+# scale data so values are workable and are of same meaning
+
+```{r}
+all.genes <- rownames(HH28D)
+HH28D <- ScaleData(HH28D, features = all.genes)
+```
+
+
+#run a principle component analysis to get our principle components
+
+```{r}
+HH28D <- RunPCA(HH28D, features = VariableFeatures(object = HH28D))
+```
+
+#look at first 5 PCAs
+
+```{r}
+print(HH28D[["pca"]], dims = 1:5, nFeatures = 5)
+```
+
+#do a heatmap to look at first PC
+
+```{r}
+
+DimHeatmap(HH28D, dims = 1, cells = 500, balanced = TRUE, fast = FALSE) + scale_fill_gradientn(colours = my_cols)
+
+
+
+```
+
+
+```{r}
+
+PC1t50 <- DimHeatmap( HH28D, dims = 1:10,cells = 500, balanced  = TRUE, fast = FALSE, combine = FALSE)
+
+PC1t5_col <- lapply(PC1t5, function(p) p + scale_fill_gradientn(colours = my_cols)) 
+
+wrap_plots(plotlist = PC1t5_col, nrow = 3, ncol = 2)
+
+
+```
+
+#checkpoint after PCA
+
+```{r}
+
+saveRDS(HH28D, file = "sObj_PCA_2.RDS")
+
+```
