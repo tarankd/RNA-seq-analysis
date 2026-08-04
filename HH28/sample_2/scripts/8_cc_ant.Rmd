@@ -1,0 +1,194 @@
+---
+title: "markers"
+author: "Taran"
+date: "2026-07-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r} 
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(ggplot2)
+library(DoubletFinder)
+library(tidyverse)
+library(RColorBrewer)
+library(cowplot)
+library(openxlsx)
+
+# colour palette 
+my_cols <- brewer.pal(n=5, "Spectral")
+
+
+## feature and cell count function
+
+FeatCellCount <- function(seuratObj){dim(seuratObj)
+              }
+
+#create a workbook that contains assigns each clusters data to its own sheet
+
+cluster_workbook <- function(data, n_clusters){
+  
+  wb <- createWorkbook()
+  addWorksheet(wb, "Markers")
+writeData(wb, sheet = "Markers", x = filtered_markers)
+
+  for(i in 0:n_clusters){
+    
+    cluster_data <- filtered_markers[filtered_markers$cluster == i,] 
+    addWorksheet(wb, as.character(i))
+    writeData(wb, sheet = as.character(i), x = cluster_data)
+    saveWorkbook(wb, file = "filtered_markers.xlsx", overwrite = TRUE)
+    
+  }
+  
+  
+}
+
+
+```
+
+# find markers for every cluster compared to all remaining cells, report only the positive ones, write to excel file
+```{r}
+markers <- FindAllMarkers(HH28B, only.pos = TRUE, group.by = "RNA_snn_res.0.5")
+markers %>%
+    group_by(cluster) %>%
+    dplyr::filter(avg_log2FC > 1)
+
+
+write.xlsx(markers, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_2/reg-full-markers/HH28B-reg-full-markers.xlsx")
+
+```
+
+
+#filter out "ENSGAL" genes
+
+```{r}
+
+filtered_markers <- markers %>% filter(!startsWith(gene, "ENSGAL"))
+
+```
+
+
+
+#write the markers to a workbook
+
+```{r}
+
+cluster_workbook(filtered_markers, 13) 
+
+```
+
+
+
+#look for marker expression throughout UMAP plot to identify clusters
+
+```{r}
+
+Prog_mark <- FeaturePlot(HH28B, features = c("ATOH7", "HES6"), pt.size = 0.5)
+
+amacrine <- FeaturePlot(HH28B, features = c("TFAP2A", "TFAP2B", "PROX1", "LHX1"), pt.size = 0.5)
+
+ecp <- FeaturePlot(HH28B, features = c("RAX2", "RXRG", "CRX"), pt.size = 0.5)
+
+nr <- FeaturePlot(HH28B, features = c("SMOC1", "ALDH1A3", "VAX1", "VSX2", "CDH2"), pt.size = 0.5)
+
+related_to_RPE_and_RPC <- FeaturePlot(HH28B, features = c("TYR", "TYRP", "WNT2B", "BCN"), pt.size = 0.5)
+
+rgc<- FeaturePlot(HH28B, features = c("ELAVL4", "NEFL", "NEFM", "CL12", "GAP43", "STMN", "POU4F3", "SATB1", "SATB2", "PAX6", "RBPMS2"), pt.size = 0.5)
+
+rpc <- FeaturePlot(HH28B, features = c("ZIC1", "VSX2", "PAX6", "VAX1", "SMOC1", "PMPR1B", "ATOH7", "HES6"), pt.size = 0.5)
+
+ec <- FeaturePlot(HH28B, features = c("VWF", "KDR"), pt.size = 0.5)
+
+POM <- FeaturePlot(HH28B, features = c("PITX2", "EMX2", "LMX1B", "PAX7", "ALX1", "LMX1B", "ALX4", "DCN", "LTBP1", "COL3A1"), pt.size = 0.5)
+
+RPE <- FeaturePlot(HH28B, features = c("OTX2", "MITF", "TYR", "TYRP1", "PITX2", "PMEL", "CDH1"), pt.size = 0.5)
+
+pioneer <- FeaturePlot(HH28B, features = c("PAX2", "CLYBL", "NTN1", "MET", "EGF", "DVL1", "GALNT6", "FOXP2", "CDH2"), pt.size = 0.5)
+
+blood <- FeaturePlot(HH28B, features = c("HBE1", "HBBA", "HBAD", "HBA1", "HBE", "HBZ", "HBBR", "SLC4A1", "SLC39A8", "TSPO2"), pt.size = 0.5)
+
+cmz <- FeaturePlot(HH28B, features = c("COL9A1", "CPAMD8", "MECOM", "OPTC", "RELN", "BNC", "FBN2", "FBN3"), pt.size = 0.5)
+
+
+
+
+```
+
+```{r}
+
+Prog_mark
+
+amacrine 
+
+ecp
+
+nr
+
+related_to_RPE_and_RPC 
+
+rgc
+
+rpc
+
+ec
+
+POM 
+
+RPE 
+
+pioneer 
+
+blood
+
+
+cmz 
+
+
+```
+
+#assign cluster identity
+
+
+```{r}
+new.cluster.ids <- c("NR", "NR2", "Pioneer", "RPE", "4", "RPE2", "6", "CMZ", "RPC", "POM", "EC", "Blood", "12", "13")
+
+
+Idents(HH28B) <- HH28B@meta.data$RNA_snn_res.0.5
+
+names(new.cluster.ids) <- levels(HH28B)
+
+HH28B <- RenameIdents(HH28B, new.cluster.ids)
+
+```
+
+
+
+```{r}
+DimPlot(HH28B, reduction = "umap", label = TRUE, label.size = 10, pt.size = 0.5) 
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_2/plots/cc/reg-diff/ant_reg_diff-0.6.png", dpi = 400, width =45, height = 25, units = "cm")
+
+
+```
+
+
+
+```{r}
+
+saveRDS(HH28B, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_2/sObj/sObj_8_reg-diff-0.6_ant.RDS")
+
+```
+
+
+
+```{r}
+
+saveRDS(HH28B, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_2/sObj/sObj_9_reg-full_ant.RDS")
+
+```

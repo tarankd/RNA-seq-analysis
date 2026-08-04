@@ -1,4 +1,0 @@
-"0",""
-"0","HH28A <- ScaleData(HH28A, vars.to.regress = c(""S.Score"", ""G2M.Score""), features = VariableFeatures(HH28A)) "
-"2","Error: object 'HH28A' not found
-"

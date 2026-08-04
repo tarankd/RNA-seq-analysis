@@ -1,9 +1,13 @@
 {
     "sortOrder": [
         {
+            "columnIndex": 4,
+            "ascending": false
+        },
+        {
             "columnIndex": 2,
             "ascending": false
         }
     ],
-    "path": "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28"
+    "path": "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_4/sObj"
 }

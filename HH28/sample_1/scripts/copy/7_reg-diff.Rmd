@@ -1,0 +1,161 @@
+---
+title: "cell-cycle-regression"
+author: "Taran"
+date: "2026-07-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+```{r} 
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(ggplot2)
+library(DoubletFinder)
+library(tidyverse)
+library(RColorBrewer)
+library(cowplot)
+library(openxlsx)
+
+# colour palette 
+my_cols <- brewer.pal(n=5, "Spectral")
+
+
+## feature and cell count function
+
+FeatCellCount <- function(seuratObj){dim(seuratObj)
+              }
+
+
+```
+
+
+#find difference between scores
+```{r}
+HH28A$CC.Difference <- HH28A$S.Score - HH28A$G2M.Score
+```
+
+#regress the difference
+```{r}
+HH28A <- ScaleData(HH28A, vars.to.regress = "CC.Difference", features = VariableFeatures(HH28A))
+```
+
+# cell cycle effects removed in PCA
+```{r}
+HH28A <- RunPCA(HH28A, features = VariableFeatures(HH28A), nfeatures.print = 10)
+```
+
+
+
+```{r}
+Elbow_plot <- ElbowPlot(HH28A, ndims = 40)
+Elbow_plot
+```
+
+
+# find the neighbours 
+
+```{r}
+HH28A <- FindNeighbors(HH28A, dims = 1:30)
+
+```
+
+#find clusters
+```{r}
+HH28A <- FindClusters(HH28A, resolution = c(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9))
+```
+
+#create the UMAP data - this clusters the cells with common gene expression and links it to the neighbours
+
+```{r}
+
+HH28A <- RunUMAP(HH28A, dims = 1:30)
+```
+
+#trial
+
+```{r}
+
+res <- "RNA_snn_res."
+nums = c(0.1, 0.2, 0.3, 0.4, 0.5)
+paste0(res, nums)
+
+
+DimPlot(HH28A, reduction = "umap", group.by = paste0(res, nums), label = TRUE, label.size = 6, repel = TRUE)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_1/plots/cc/reg-diff/cc_umap_trial.1.png", dpi = 400)
+
+
+
+```
+
+#visualise the UMAP
+
+```{r}
+
+res <- "RNA_snn_res."
+nums = c(0.6, 0.7, 0.8, 0.9)
+paste0(res, nums)
+
+
+DimPlot(HH28A, reduction = "umap", group.by = paste0(res, nums), label = TRUE, label.size = 6, repel = TRUE)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_1/plots/cc/reg-diff/cc_umap_trial.2.png", dpi = 400)
+
+
+
+```
+
+
+
+```{r}
+
+res <- "RNA_snn_res."
+nums = c(0.5, 0.6)
+paste0(res, nums)
+
+
+DimPlot(HH28A, reduction = "umap", group.by = paste0(res, nums), label = TRUE, label.size = 6, repel = TRUE)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_1/plots/cc/reg-diff/cc_umap_trial.3.png", dpi = 400)
+
+```
+
+#save as png
+```{r}
+
+
+DimPlot(HH28A, reduction = "umap", group.by = "RNA_snn_res.0.6", label = TRUE, label.size = 5, repel = TRUE) 
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_1/plots/cc/reg-diff/cc_d.reg_umap.png", dpi = 400)
+
+```
+
+#update how clusters are ordered in metadata to ensure uniform ordering across all sample reports
+```{r}
+# Update the identity of the Seurat object and define the new order of groups
+HH28A@meta.data$Phase <- factor(HH28A@meta.data$Phase, levels = c("G1", "S", "G2M"))
+
+
+# Reassign identity with the new order
+Idents(HH28A) <- HH28A@meta.data$Phase
+```
+
+
+#plot
+
+```{r}
+
+DimPlot(HH28A, cols = c("S" = "orange", "G1" = "forestgreen", "G2M" = "steelblue4", group_by = "Phase")) 
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_1/plots/cc/reg-diff/cc_reg_diff.png", dpi = 400)
+
+
+```
+
+
+```{r}
+saveRDS(HH28A, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_1/sObj/sObj_7_regress_diff.RDS")
+```
+
