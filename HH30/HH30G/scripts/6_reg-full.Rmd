@@ -1,0 +1,155 @@
+---
+title: "reg-full"
+author: "Taran"
+date: "2026-08-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r} 
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(ggplot2)
+library(DoubletFinder)
+library(tidyverse)
+library(RColorBrewer)
+library(cowplot)
+library(openxlsx)
+
+# colour palette 
+my_cols <- brewer.pal(n=5, "Spectral")
+
+
+## feature and cell count function
+
+FeatCellCount <- function(seuratObj){dim(seuratObj)
+              }
+
+
+```
+
+
+#segregate list of cell cycle markers into G2/M and S
+
+```{r}
+s.genes <- cc.genes$s.genes
+g2m.genes <- cc.genes$g2m.genes
+```
+
+
+
+```{r}
+
+HH30G <- ScaleData(HH30G, vars.to.regress = c("S.Score", "G2M.Score"), features = VariableFeatures(HH30G)) 
+
+```
+
+
+#PCA on the variable genes no longer returns components associated with cell cycle
+
+```{r}
+HH30G <- RunPCA(HH30G, features = VariableFeatures(HH30G), nfeatures.print = 10)
+```
+
+
+```{r}
+Elbow_plot <- ElbowPlot(HH30G, ndims = 40)
+Elbow_plot
+```
+
+
+# find the neighbours 
+
+```{r}
+HH30G <- FindNeighbors(HH30G, dims = 1:30)
+
+```
+
+#find clusters
+```{r}
+HH30G <- FindClusters(HH30G, resolution = c(0.4, 0.5, 0.6, 0.7))
+
+```
+
+
+#create the UMAP data - this the clusters the cells with common gene expression and links it to the neighbours
+
+```{r}
+
+HH30G <- RunUMAP(HH30G, dims = 1:30)
+```
+#trial
+
+```{r}
+
+res <- "RNA_snn_res."
+nums = c(0.4, 0.5, 0.6, 0.7)
+paste0(res, nums)
+
+
+p <- DimPlot(HH30G, reduction = "umap", group.by = paste0(res, nums), label = TRUE, label.size = 6, repel = TRUE, pt.size = 0.5)
+LabelClusters(p, id = "RNA_snn_res.0.6", repel = TRUE)
+
+
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/plots/cc/reg-full/cc_umap_trial.1.png", dpi = 400, width =45, height = 25, units = "cm")
+
+
+
+```
+
+
+
+
+```{r}
+
+res <- "RNA_snn_res."
+nums = c(0.5, 0.6)
+paste0(res, nums)
+
+
+DimPlot(HH30G, reduction = "umap", group.by = paste0(res, nums), label = TRUE, label.size = 6, repel = TRUE, pt.size = 0.5)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/plots/cc/reg-full/cc_umap_trial.3.png", dpi = 400, width =45, height = 25, units = "cm")
+
+```
+
+#save as png
+```{r}
+
+
+DimPlot(HH30G, reduction = "umap", group.by = "RNA_snn_res.0.6", label = TRUE, label.size = 10, repel = TRUE, pt.size = 0.5) 
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/plots/cc/reg-full/cc_f.reg_umap-1.png", dpi = 400, width =45, height = 25, units = "cm")
+
+```
+
+
+
+#update how clusters are ordered in metadata to ensure uniform ordering across all sample reports
+```{r}
+# Update the identity of the Seurat object and define the new order of groups
+HH30G@meta.data$Phase <- factor(HH30G@meta.data$Phase, levels = c("G1", "S", "G2M"))
+
+
+# Reassign identity with the new order
+Idents(HH30G) <- HH30G@meta.data$Phase
+```
+
+#plot
+
+```{r}
+
+DimPlot(HH30G, cols = c("S" = "orange", "G1" = "forestgreen", "G2M" = "steelblue4"), group.by = "Phase", pt.size = 0.5) 
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/plots/cc/reg-full/cc_reg_full.png", dpi = 400, width =45, height = 25, units = "cm")
+
+```
+
+
+
+```{r}
+saveRDS(HH30G, file =  "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/sObj/sObj_6_full_reg.RDS")
+```

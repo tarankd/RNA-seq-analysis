@@ -68,13 +68,13 @@ return(clusters)
 
 # find markers for every cluster compared to all remaining cells, report only the positive ones, write to excel file
 ```{r}
-markers <- FindAllMarkers(HH28D, only.pos = TRUE, group.by = "RNA_snn_res.0.6")
+markers <- FindAllMarkers(HH30H, only.pos = TRUE, group.by = "RNA_snn_res.0.6")
 markers %>%
     group_by(cluster) %>%
     dplyr::filter(avg_log2FC > 1)
 
 
-write.xlsx(markers, file = "HH28D_markers.xlsx")
+write.xlsx(markers, file = "HH30H_markers.xlsx")
 
 ```
 
@@ -103,9 +103,9 @@ cluster_workbook(filtered_markers, 13)
 #find differential expression of markers for cluster 0 and write to excel file
 
 ```{r}
-cluster0.markers <- FindMarkers(HH28D, ident.1 = 0, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+cluster0.markers <- FindMarkers(HH30H, ident.1 = 0, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
 
-write.xlsx(cluster0.markers, file = "HH28D_c0_markers.xlsx")
+write.xlsx(cluster0.markers, file = "HH30H_c0_markers.xlsx")
 ```
 
 
@@ -114,32 +114,32 @@ write.xlsx(cluster0.markers, file = "HH28D_c0_markers.xlsx")
 
 ```{r}
 
-Progenitor_markers <- FeaturePlot(HH28D, features = c("ATOH7", "HES6"))
+Progenitor_markers <- FeaturePlot(HH30H, features = c("ATOH7", "HES6"))
 
-amacrine <- FeaturePlot(HH28D, features = c("TFAP2A", "TFAP2B", "PROX1", "LHX1"))
+amacrine <- FeaturePlot(HH30H, features = c("TFAP2A", "TFAP2B", "PROX1", "LHX1"))
 
-early_cone_photoreceptors <- FeaturePlot(HH28D, features = c("RAX2", "RXRG", "CRX"))
+early_cone_photoreceptors <- FeaturePlot(HH30H, features = c("RAX2", "RXRG", "CRX"))
 
-neural_retina <- FeaturePlot(HH28D, features = c("SMOC1", "ALDH1A3", "VAX1", "VSX2", "CDH2"))
+neural_retina <- FeaturePlot(HH30H, features = c("SMOC1", "ALDH1A3", "VAX1", "VSX2", "CDH2"))
 
-related_to_RPE_and_RPC <- FeaturePlot(HH28D, features = c("TYR", "TYRP", "WNT2B", "BCN"))
+related_to_RPE_and_RPC <- FeaturePlot(HH30H, features = c("TYR", "TYRP", "WNT2B", "BCN"))
 
-retinal_ganglion_cells <- FeaturePlot(HH28D, features = c("ELAVL4", "NEFL", "NEFM", "CL12", "GAP43", "STMN", "POU4F3", "SATB1", "SATB2", "PAX6", "RBPMS2"))
+retinal_ganglion_cells <- FeaturePlot(HH30H, features = c("ELAVL4", "NEFL", "NEFM", "CL12", "GAP43", "STMN", "POU4F3", "SATB1", "SATB2", "PAX6", "RBPMS2"))
 
-retinal_progenitor_cells <- FeaturePlot(HH28D, features = c("ZIC1", "VSX2", "PAX6", "VAX1", "SMOC1", "PMPR1B", "ATOH7", "HES6"))
+retinal_progenitor_cells <- FeaturePlot(HH30H, features = c("ZIC1", "VSX2", "PAX6", "VAX1", "SMOC1", "PMPR1B", "ATOH7", "HES6"))
 
-endothelial_and_blood <- FeaturePlot(HH28D, features = c("VWF", "KDR"))
+endothelial_and_blood <- FeaturePlot(HH30H, features = c("VWF", "KDR"))
 
-POM <- FeaturePlot(HH28D, features = c("PITX2", "EMX2", "LMX1B", "PAX7", "ALX1", "LMX1B", "ALX4", "DCN", "LTBP1", "COL3A1"))
+POM <- FeaturePlot(HH30H, features = c("PITX2", "EMX2", "LMX1B", "PAX7", "ALX1", "LMX1B", "ALX4", "DCN", "LTBP1", "COL3A1"))
 
-RPE <- FeaturePlot(HH28D, features = c("OTX2", "MITF", "TYR", "TYRP1", "PITX2", "PMEL", "CDH1"))
+RPE <- FeaturePlot(HH30H, features = c("OTX2", "MITF", "TYR", "TYRP1", "PITX2", "PMEL", "CDH1"))
 
-pioneer <- FeaturePlot(HH28D, features = c("PAX2", "CLYBL", "NTN1", "MET", "EGF", "DVL1", "GALNT6", "FOXP2", "CDH2"))
+pioneer <- FeaturePlot(HH30H, features = c("PAX2", "CLYBL", "NTN1", "MET", "EGF", "DVL1", "GALNT6", "FOXP2", "CDH2"))
 
-blood <- FeaturePlot(HH28D, features = c("HBE1", "HBBA", "HBAD", "HBA1", "HBE", "HBZ", "HBBR", "SLC4A1", "SLC39A8", "TSPO2"))
+blood <- FeaturePlot(HH30H, features = c("HBE1", "HBBA", "HBAD", "HBA1", "HBE", "HBZ", "HBBR", "SLC4A1", "SLC39A8", "TSPO2"))
 
 
-cmz <- FeaturePlot(HH28D, features = c("COL9A1", "CPAMD8", "MECOM", "OPTC", "RELN", "BNC", "FBN2", "FBN3"))
+cmz <- FeaturePlot(HH30H, features = c("COL9A1", "CPAMD8", "MECOM", "OPTC", "RELN", "BNC", "FBN2", "FBN3"))
 
 
 
@@ -180,7 +180,7 @@ cmz
 
 #top 5 genes for each cluster, sorted largest to smalled avg log and less than 0.05 for p val adj
 ```{r}
-top5.genes <- top5(HH28D)
+top5.genes <- top5(HH30H)
 
 top5.genes
 ``` 
@@ -189,7 +189,7 @@ top5.genes
 #heatmap for the top 5 genes per cluster
 
 ```{r}
-top5heatmap <- DoHeatmap(HH28D, group.by = "RNA_snn_res.0.6", features = top5.genes$gene)
+top5heatmap <- DoHeatmap(HH30H, group.by = "RNA_snn_res.0.6", features = top5.genes$gene)
 top5heatmap
 
 ```
@@ -199,7 +199,7 @@ top5heatmap
 
 options(bitmapType = "cairo")
 png("top5genes.png", width = 9000, height = 4000, res = 200, type = "cairo") 
-p <- DoHeatmap(HH28D, group.by = "RNA_snn_res.0.7", features = top5.genes$gene, label = FALSE) 
+p <- DoHeatmap(HH30H, group.by = "RNA_snn_res.0.7", features = top5.genes$gene, label = FALSE) 
 p <- p + theme(
   axis.text = element_text(size = 20),         #gene names
   legend.title = element_text(size = 20),      #identity and expression text size
@@ -220,12 +220,12 @@ dev.off()
 new.cluster.ids <- c("0", "1", "2", "RPE", "CMZ", "5", "RPE2", "Pioneer", "8","POM","RPC", "EC", "12", "13" )
 
 
-Idents(HH28D) <- HH28D@meta.data$RNA_snn_res.0.6
+Idents(HH30H) <- HH30H@meta.data$RNA_snn_res.0.6
 
-names(new.cluster.ids) <- levels(HH28D)
+names(new.cluster.ids) <- levels(HH30H)
 
-HH28D <- RenameIdents(HH28D, new.cluster.ids)
-DimPlot(HH28D, reduction = "umap", label = TRUE, label.size = 8) + xlab("UMAP 1") + ylab("UMAP 2") +
+HH30H <- RenameIdents(HH30H, new.cluster.ids)
+DimPlot(HH30H, reduction = "umap", label = TRUE, label.size = 8) + xlab("UMAP 1") + ylab("UMAP 2") +
     theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size = 10)))
 ```
 
@@ -234,8 +234,8 @@ DimPlot(HH28D, reduction = "umap", label = TRUE, label.size = 8) + xlab("UMAP 1"
 
 ```{r}
 
-png(file= "umap_HH28D.png", width=2800, height=1500, res = 200, type = "cairo") 
-DimPlot(HH28D, reduction = "umap", label = TRUE, label.size = 8) + xlab("UMAP 1") + ylab("UMAP 2") +
+png(file= "umap_HH30H.png", width=2800, height=1500, res = 200, type = "cairo") 
+DimPlot(HH30H, reduction = "umap", label = TRUE, label.size = 8) + xlab("UMAP 1") + ylab("UMAP 2") +
     theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size = 10)))
 dev.off()
 
@@ -246,6 +246,6 @@ dev.off()
 
 ```{r}
 
-saveRDS(HH28D, file = "sObj_Markers_4.RDS")
+saveRDS(HH30H, file = "sObj_Markers_4.RDS")
 
 ```

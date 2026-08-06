@@ -1,0 +1,194 @@
+---
+title: "markers"
+author: "Taran"
+date: "2026-07-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r} 
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(ggplot2)
+library(DoubletFinder)
+library(tidyverse)
+library(RColorBrewer)
+library(cowplot)
+library(openxlsx)
+
+# colour palette 
+my_cols <- brewer.pal(n=5, "Spectral")
+
+
+## feature and cell count function
+
+FeatCellCount <- function(seuratObj){dim(seuratObj)
+              }
+
+#create a workbook that contains assigns each clusters data to its own sheet
+
+cluster_workbook <- function(data, n_clusters){
+  
+  wb <- createWorkbook()
+  addWorksheet(wb, "Markers")
+writeData(wb, sheet = "Markers", x = filtered_markers)
+
+  for(i in 0:n_clusters){
+    
+    cluster_data <- filtered_markers[filtered_markers$cluster == i,] 
+    addWorksheet(wb, as.character(i))
+    writeData(wb, sheet = as.character(i), x = cluster_data)
+    saveWorkbook(wb, file = "filtered_markers.xlsx", overwrite = TRUE)
+    
+  }
+  
+  
+}
+
+
+```
+
+# find markers for every cluster compared to all remaining cells, report only the positive ones, write to excel file
+```{r}
+markers <- FindAllMarkers(HH30T, only.pos = TRUE, group.by = "RNA_snn_res.0.4")
+markers %>%
+    group_by(cluster) %>%
+    dplyr::filter(avg_log2FC > 1)
+
+
+write.xlsx(markers, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30T/reg-diff-markers/HH30T-0.4-reg-diff-markers.xlsx")
+
+```
+
+
+#filter out "ENSGAL" genes
+
+```{r}
+
+filtered_markers <- markers %>% filter(!startsWith(gene, "ENSGAL"))
+
+```
+
+
+
+#write the markers to a workbook
+
+```{r}
+
+cluster_workbook(filtered_markers, 11)
+
+```
+
+
+
+#look for marker expression throughout UMAP plot to identify clusters
+
+```{r}
+
+Prog_mark <- FeaturePlot(HH30T, features = c("ATOH7", "HES6"), pt.size = 0.5)
+
+amacrine <- FeaturePlot(HH30T, features = c("TFAP2A", "TFAP2B", "PROX1", "LHX1"), pt.size = 0.5)
+
+ecp <- FeaturePlot(HH30T, features = c("RAX2", "RXRG", "CRX"), pt.size = 0.5)
+
+nr <- FeaturePlot(HH30T, features = c("SMOC1", "ALDH1A3", "VAX1", "VSX2", "CDH2"), pt.size = 0.5)
+
+related_to_RPE_and_RPC <- FeaturePlot(HH30T, features = c("TYR", "TYRP", "WNT2B", "BCN"), pt.size = 0.5)
+
+rgc<- FeaturePlot(HH30T, features = c("ELAVL4", "NEFL", "NEFM", "CL12", "GAP43", "STMN", "POU4F3", "SATB1", "SATB2", "PAX6", "RBPMS2"), pt.size = 0.5)
+
+rpc <- FeaturePlot(HH30T, features = c("ZIC1", "VSX2", "PAX6", "VAX1", "SMOC1", "PMPR1B", "ATOH7", "HES6"), pt.size = 0.5)
+
+ec <- FeaturePlot(HH30T, features = c("VWF", "KDR"), pt.size = 0.5)
+
+POM <- FeaturePlot(HH30T, features = c("PITX2", "EMX2", "LMX1B", "PAX7", "ALX1", "LMX1B", "ALX4", "DCN", "LTBP1", "COL3A1"), pt.size = 0.5)
+
+RPE <- FeaturePlot(HH30T, features = c("OTX2", "MITF", "TYR", "TYRP1", "PITX2", "PMEL", "CDH1"), pt.size = 0.5)
+
+pioneer <- FeaturePlot(HH30T, features = c("PAX2", "CLYBL", "NTN1", "MET", "EGF", "DVL1", "GALNT6", "FOXP2", "CDH2"), pt.size = 0.5)
+
+blood <- FeaturePlot(HH30T, features = c("HBE1", "HBBA", "HBAD", "HBA1", "HBE", "HBZ", "HBBR", "SLC4A1", "SLC39A8", "TSPO2"), pt.size = 0.5)
+
+cmz <- FeaturePlot(HH30T, features = c("COL9A1", "CPAMD8", "MECOM", "OPTC", "RELN", "BNC", "FBN2", "FBN3"), pt.size = 0.5)
+
+
+
+
+```
+
+```{r}
+
+Prog_mark
+
+amacrine 
+
+ecp
+
+nr
+
+related_to_RPE_and_RPC 
+
+rgc
+
+rpc
+
+ec
+
+POM 
+
+RPE 
+
+pioneer 
+
+blood
+
+
+cmz 
+
+
+```
+
+#assign cluster identity
+
+
+```{r}
+new.cluster.ids <- c("NR", "CMZ", "RPE", "RPC", "4", "RPE2", "Pioneer", "RGC", "ECP", "A/HC", "EC", "POM")
+
+
+Idents(HH30T) <- HH30T@meta.data$RNA_snn_res.0.4
+
+names(new.cluster.ids) <- levels(HH30T)
+
+HH30T <- RenameIdents(HH30T, new.cluster.ids)
+
+```
+
+
+
+```{r}
+DimPlot(HH30T, reduction = "umap", label = TRUE, label.size = 10, pt.size = 0.5) 
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30T/plots/cc/reg-diff/ant_reg_diff-0.4.png", dpi = 400, width =45, height = 25, units = "cm")
+
+
+```
+
+
+#diff
+```{r}
+
+saveRDS(HH30T, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30T/sObj/sObj_8_reg-diff-0.4_ant.RDS")
+
+```
+
+
+#full
+```{r}h
+
+saveRDS(HH30T, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30T/sObj/sObj_9_reg-full_0.5-ant.RDS")
+
+```
