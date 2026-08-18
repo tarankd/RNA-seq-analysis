@@ -1,0 +1,132 @@
+---
+title: "regressed-integration"
+author: "Taran"
+date: "2026-08-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+---
+title: "integration"
+author: "Taran"
+date: "2026-07-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(harmony)
+library(Seurat)
+library(dplyr)
+library(cowplot)
+library(Matrix)
+library(ggplot2)
+
+# cairo for the damn font 
+
+X11.options(type = "cairo")
+options(bitmapType = "cairo")
+
+```
+
+
+#read full reg obj data
+```{r}
+
+
+HH28A <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_1/sObj/sObj_1_QC.RDS")
+HH28B <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_2/sObj/sObj_1_QC.RDS")
+HH28C <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_3/sObj/sObj_1_QC.RDS")
+HH28D <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_4/sObj/sObj_1_QC.RDS")
+
+```
+
+#set orig.ident so Harmony has something to integrate over
+```{r}
+
+HH28A$orig.ident <- "sample1"
+HH28B$orig.ident <- "sample2"
+HH28C$orig.ident <- "sample3"
+HH28D$orig.ident <- "sample4"
+```
+
+#merge into one object
+```{r}
+
+HH28 <- merge(HH28A, y = list (HH28B, HH28C, HH28D))
+
+```
+
+
+#pre-processing
+```{r}
+HH28 <- NormalizeData(HH28)
+HH28 <- FindVariableFeatures(HH28, selection.method = "vst", nfeatures = 2000)
+HH28 <- ScaleData(HH28, features = VariableFeatures(HH28A))
+HH28 <- RunPCA(HH28, features = VariableFeatures(HH28), npcs = 50)
+
+```
+
+
+# Integrate over a single batch variable
+```{r}
+HH28 <- RunHarmony(
+  object         = HH28,
+  group.by.vars  = "orig.ident",        # or e.g. "batch", "donor"
+  reduction.use  = "pca",
+  dims.use       = 1:30,                # choose PCs to harmonize
+  reduction.save = "harmony",
+  project.dim    = TRUE
+)
+
+```
+
+
+
+# UMAP
+```{r}
+HH28 <- RunUMAP(HH28, reduction = "harmony", dims = 1:30)
+
+# Nearest neighbours and clustering
+HH28 <- FindNeighbors(HH28, reduction = "harmony", dims = 1:30)
+HH28 <- FindClusters(HH28, resolution = c(0.4, 0.5, 0.6, 0.7))
+
+```
+
+#UMAP trial
+```{r}
+
+res <- "RNA_snn_res."
+nums = c(0.4, 0.5, 0.6, 0.7)
+paste0(res, nums)
+
+DimPlot(HH28, reduction = "umap", label = TRUE, repel = TRUE, group.by = paste0(res, nums), pt.size = 0.5)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/int/plots/int-28-umap-trial.png", dpi = 400, width =60, height = 35, units = "cm")
+
+```
+
+
+#plot UMAP
+```{r}
+
+DimPlot(HH28, reduction = "umap", label = TRUE, repel = TRUE, group.by = "RNA_snn_res.0.7", pt.size = 0.5)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/int/plots/0.7-28-int-umap.png", dpi = 400, width =60, height = 35, units = "cm")
+
+```
+
+
+
+
+```{r}
+
+saveRDS(HH28, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/int/sObj/sObj_HH28-int.RDS")
+
+```
+

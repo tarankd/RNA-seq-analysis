@@ -38,23 +38,23 @@ FeatCellCount <- function(seuratObj){dim(seuratObj)
 
 #find difference between scores
 ```{r}
-HH30F$CC.Difference <- HH30F$S.Score - HH30F$G2M.Score
+HH30G$CC.Difference <- HH30G$S.Score - HH30G$G2M.Score
 ```
 
 #regress the difference
 ```{r}
-HH30F <- ScaleData(HH30F, vars.to.regress = "CC.Difference", features = VariableFeatures(HH30F))
+HH30G <- ScaleData(HH30G, vars.to.regress = "CC.Difference", features = VariableFeatures(HH30G))
 ```
 
 # cell cycle effects removed in PCA
 ```{r}
-HH30F <- RunPCA(HH30F, features = VariableFeatures(HH30F), nfeatures.print = 10)
+HH30G <- RunPCA(HH30G, features = VariableFeatures(HH30G), nfeatures.print = 10)
 ```
 
 
 
 ```{r}
-Elbow_plot <- ElbowPlot(HH30F, ndims = 40)
+Elbow_plot <- ElbowPlot(HH30G, ndims = 40)
 Elbow_plot
 ```
 
@@ -62,20 +62,20 @@ Elbow_plot
 # find the neighbours 
 
 ```{r}
-HH30F <- FindNeighbors(HH30F, dims = 1:30)
+HH30G <- FindNeighbors(HH30G, dims = 1:30)
 
 ```
 
 #find clusters
 ```{r}
-HH30F <- FindClusters(HH30F, resolution = c(0.4, 0.5, 0.6, 0.7))
+HH30G <- FindClusters(HH30G, resolution = c(0.4, 0.5, 0.6, 0.7))
 ```
 
 #create the UMAP data - this clusters the cells with common gene expression and links it to the neighbours
 
 ```{r}
 
-HH30F <- RunUMAP(HH30F, dims = 1:30)
+HH30G <- RunUMAP(HH30G, dims = 1:30)
 ```
 
 #trial
@@ -87,8 +87,8 @@ nums = c(0.4, 0.5, 0.6, 0.7)
 paste0(res, nums)
 
 
-DimPlot(HH30F, reduction = "umap", group.by = paste0(res, nums), label = TRUE, label.size = 6, repel = TRUE, pt.size = 0.5)
-ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30F/plots/cc/reg-diff/cc_umap_trial.1.png", dpi = 400)
+DimPlot(HH30G, reduction = "umap", group.by = paste0(res, nums), label = TRUE, label.size = 6, repel = TRUE, pt.size = 0.5)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/plots/cc/reg-diff/cc_umap_trial.1.png", dpi = 400)
 
 
 
@@ -98,12 +98,12 @@ ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30F/plots/cc
 ```{r}
 
 res <- "RNA_snn_res."
-nums = c(0.6, 0.7)
+nums = c(0.5, 0.6)
 paste0(res, nums)
 
 
-DimPlot(HH30F, reduction = "umap", group.by = paste0(res, nums), label = TRUE, label.size = 6, repel = TRUE, pt.size = 0.5)
-ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30F/plots/cc/reg-diff/cc_umap_trial.2.png", dpi = 400)
+DimPlot(HH30G, reduction = "umap", group.by = paste0(res, nums), label = TRUE, label.size = 6, repel = TRUE, pt.size = 0.5)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/plots/cc/reg-diff/cc_umap_trial.2.png", dpi = 400)
 
 ```
 
@@ -111,19 +111,19 @@ ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30F/plots/cc
 ```{r}
 
 
-DimPlot(HH30F, reduction = "umap", group.by = "RNA_snn_res.0.7", label = TRUE, label.size = 5, repel = TRUE, pt.size = 0.5) 
-ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30F/plots/cc/reg-diff/cc_d.reg_umap2.png", dpi = 400)
+DimPlot(HH30G, reduction = "umap", group.by = "RNA_snn_res.0.6", label = TRUE, label.size = 5, repel = TRUE, pt.size = 0.5) 
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/plots/cc/reg-diff/cc_d.reg_umap.png", dpi = 400)
 
 ```
 
 #update how clusters are ordered in metadata to ensure uniform ordering across all sample reports
 ```{r}
 # Update the identity of the Seurat object and define the new order of groups
-HH30F@meta.data$Phase <- factor(HH30F@meta.data$Phase, levels = c("G1", "S", "G2M"))
+HH30G@meta.data$Phase <- factor(HH30G@meta.data$Phase, levels = c("G1", "S", "G2M"))
 
 
 # Reassign identity with the new order
-Idents(HH30F) <- HH30F@meta.data$Phase
+Idents(HH30G) <- HH30G@meta.data$Phase
 ```
 
 
@@ -131,14 +131,14 @@ Idents(HH30F) <- HH30F@meta.data$Phase
 
 ```{r}
 
-DimPlot(HH30F, cols = c("S" = "orange", "G1" = "forestgreen", "G2M" = "steelblue4"), group.by = "Phase", pt.size = 0.5) 
-ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30F/plots/cc/reg-diff/cc_reg_diff.png", dpi = 400)
+DimPlot(HH30G, cols = c("S" = "orange", "G1" = "forestgreen", "G2M" = "steelblue4"), group.by = "Phase", pt.size = 0.5) 
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/plots/cc/reg-diff/cc_reg_diff.png", dpi = 400)
 
 
 ```
 
 
 ```{r}
-saveRDS(HH30F, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30F/sObj/sObj_7_reg_diff.RDS")
+saveRDS(HH30G, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/sObj/sObj_7_reg_diff.RDS")
 ```
 

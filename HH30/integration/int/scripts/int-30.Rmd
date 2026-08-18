@@ -1,0 +1,144 @@
+---
+title: "regressed-integration"
+author: "Taran"
+date: "2026-08-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(harmony)
+library(Seurat)
+library(dplyr)
+library(cowplot)
+library(Matrix)
+library(ggplot2)
+
+# cairo for the damn font 
+
+X11.options(type = "cairo")
+options(bitmapType = "cairo")
+
+```
+
+
+#read full reg obj data
+```{r}
+
+
+HH30F <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30F/sObj/sObj_1_QC.RDS")
+HH30G <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/sObj/sObj_1_QC.RDS")
+HH30H <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30H/sObj/sObj_1_QC.RDS")
+HH30T <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30T/sObj/sObj_1_QC.RDS")
+
+```
+
+#set orig.ident so Harmony has something to integrate over
+```{r}
+
+HH30F$orig.ident <- "HH30F"
+HH30G$orig.ident <- "HH30G"
+HH30H$orig.ident <- "HH30H"
+HH30T$orig.ident <- "HH30T"
+```
+
+#merge into one object
+```{r}
+
+HH30 <- merge(HH30F, y = list (HH30G, HH30H, HH30T))
+
+```
+
+
+#pre-processing
+```{r}
+HH30 <- NormalizeData(HH30)
+HH30 <- FindVariableFeatures(HH30, selection.method = "vst", nfeatures = 2000)
+HH30 <- ScaleData(HH30, features = VariableFeatures(HH30))
+HH30 <- RunPCA(HH30, features = VariableFeatures(HH30), npcs = 50)
+
+```
+
+
+# Integrate over a single batch variable
+```{r}
+HH30 <- RunHarmony(
+  object         = HH30,
+  group.by.vars  = "orig.ident",        # or e.g. "batch", "donor"
+  reduction.use  = "pca",
+  dims.use       = 1:30,                # choose PCs to harmonize
+  reduction.save = "harmony",
+  project.dim    = TRUE
+)
+
+```
+
+
+
+# UMAP
+```{r}
+HH30 <- RunUMAP(HH30, reduction = "harmony", dims = 1:30)
+
+# Nearest neighbours and clustering
+HH30 <- FindNeighbors(HH30, reduction = "harmony", dims = 1:30)
+HH30 <- FindClusters(HH30, resolution = c(0.4, 0.5, 0.6, 0.7))
+
+```
+
+#UMAP trial
+```{r}
+
+res <- "RNA_snn_res."
+nums = c(0.4, 0.5, 0.6, 0.7)
+paste0(res, nums)
+
+DimPlot(HH30, reduction = "umap", label = TRUE, repel = TRUE, group.by = paste0(res, nums), pt.size = 0.5)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/integration/int/plots/int-30-umap-trial.png", dpi = 400, width =60, height = 35, units = "cm")
+
+```
+
+
+#plot UMAP
+```{r}
+
+DimPlot(HH30, reduction = "umap", label = TRUE, repel = TRUE, group.by = "RNA_snn_res.0.7", pt.size = 0.5)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/integration/int/plots/0.7-30-int-umap.png", dpi = 400, width =60, height = 35, units = "cm")
+
+```
+
+
+# if needed for numeric ordering of cluster IDs
+```{r} #still in need of adjustment. Doesn't work yet so will try to rename when annotating instead
+# Relevel the metadata column itself
+HH30$RNA_snn_res.0.7 <- factor(
+  HH30$RNA_snn_res.0.7,
+  levels = as.character(sort(as.integer(unique(HH30$RNA_snn_res.0.7))))
+)
+
+# Then plot using group.by
+DimPlot(HH30, reduction = "umap", group.by = "RNA_snn_res.0.7",
+        label = TRUE, repel = TRUE, pt.size = 0.5)
+```
+
+
+#plot UMAP
+```{r}
+
+DimPlot(HH30, reduction = "umap", group.by = "RNA_snn_res.0.7", label = TRUE, repel = TRUE, pt.size = 0.5)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/integration/int/plots/0.7-30-int-reorder-umap.png", dpi = 400, width =60, height = 35, units = "cm")
+
+```
+
+
+
+
+```{r}
+
+saveRDS(HH30, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/integration/int/sObj/sObj_HH30-int.RDS")
+
+```
+

@@ -1,0 +1,206 @@
+---
+title: "markers"
+author: "Taran"
+date: "2026-07-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r} 
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(ggplot2)
+library(DoubletFinder)
+library(tidyverse)
+library(RColorBrewer)
+library(cowplot)
+library(openxlsx)
+
+# colour palette 
+my_cols <- brewer.pal(n=5, "Spectral")
+
+
+## feature and cell count function
+
+FeatCellCount <- function(seuratObj){dim(seuratObj)
+              }
+
+#create a workbook that contains assigns each clusters data to its own sheet
+
+cluster_workbook <- function(data, n_clusters){
+  
+  wb <- createWorkbook()
+  addWorksheet(wb, "Markers")
+writeData(wb, sheet = "Markers", x = filtered_markers)
+
+  for(i in 0:n_clusters){
+    
+    cluster_data <- filtered_markers[filtered_markers$cluster == i,] 
+    addWorksheet(wb, as.character(i))
+    writeData(wb, sheet = as.character(i), x = cluster_data)
+    saveWorkbook(wb, file = "filtered_markers.xlsx", overwrite = TRUE)
+    
+  }
+  
+  
+}
+
+options(bitmapType = "cairo")
+```
+
+
+# Integrate layers, want RNA in assay 
+```{r}
+
+DefaultAssay(HH28) <- "RNA"
+
+Layers(HH28[["RNA"]])
+
+HH28 <- JoinLayers(HH28, assay = "RNA")
+
+Layers(HH28[["RNA"]])
+
+Idents(HH28) <- "RNA_snn_res.0.6"
+
+```
+
+
+
+# find markers for every cluster compared to all remaining cells, report only the positive ones, write to excel file
+```{r}
+
+markers <- FindAllMarkers(HH28, only.pos = TRUE, group.by = "RNA_snn_res.0.6")
+markers %>%
+    group_by(cluster) %>%
+    dplyr::filter(avg_log2FC > 1)
+
+
+write.xlsx(markers, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/diff-reg/markers/HH28-int-diff-markers.xlsx")
+
+```
+
+
+#filter out "ENSGAL" genes
+
+```{r}
+
+filtered_markers <- markers %>% filter(!startsWith(gene, "ENSGAL"))
+
+```
+
+
+
+#write the markers to a workbook
+
+```{r}
+
+cluster_workbook(filtered_markers, 16)
+
+```
+
+
+
+#look for marker expression throughout UMAP plot to identify clusters
+
+```{r}
+
+Prog_mark <- FeaturePlot(HH28, features = c("ATOH7", "HES6"), pt.size = 0.5)
+
+amacrine <- FeaturePlot(HH28, features = c("TFAP2A", "TFAP2B", "PROX1", "LHX1"), pt.size = 0.5)
+
+ecp <- FeaturePlot(HH28, features = c("RAX2", "RXRG", "CRX"), pt.size = 0.5)
+
+nr <- FeaturePlot(HH28, features = c("SMOC1", "ALDH1A3", "VAX1", "VSX2", "CDH2"), pt.size = 0.5)
+
+related_to_RPE_and_RPC <- FeaturePlot(HH28, features = c("TYR", "TYRP", "WNT2B", "BCN"), pt.size = 0.5)
+
+rgc<- FeaturePlot(HH28, features = c("ELAVL4", "NEFL", "NEFM", "CL12", "GAP43", "STMN", "POU4F3", "SATB1", "SATB2", "PAX6", "RBPMS2"), pt.size = 0.5)
+
+rpc <- FeaturePlot(HH28, features = c("ZIC1", "VSX2", "PAX6", "VAX1", "SMOC1", "PMPR1B", "ATOH7", "HES6"), pt.size = 0.5)
+
+ec <- FeaturePlot(HH28, features = c("VWF", "KDR"), pt.size = 0.5)
+
+POM <- FeaturePlot(HH28, features = c("PITX2", "EMX2", "LMX1B", "PAX7", "ALX1", "LMX1B", "ALX4", "DCN", "LTBP1", "COL3A1"), pt.size = 0.5)
+
+RPE <- FeaturePlot(HH28, features = c("OTX2", "MITF", "TYR", "TYRP1", "PITX2", "PMEL", "CDH1"), pt.size = 0.5)
+
+pioneer <- FeaturePlot(HH28, features = c("PAX2", "CLYBL", "NTN1", "MET", "EGF", "DVL1", "GALNT6", "FOXP2", "CDH2"), pt.size = 0.5)
+
+blood <- FeaturePlot(HH28, features = c("HBE1", "HBBA", "HBAD", "HBA1", "HBE", "HBZ", "HBBR", "SLC4A1", "SLC39A8", "TSPO2"), pt.size = 0.5)
+
+cmz <- FeaturePlot(HH28, features = c("COL9A1", "CPAMD8", "MECOM", "OPTC", "RELN", "BNC", "FBN2", "FBN3"), pt.size = 0.5)
+
+
+
+
+```
+
+```{r}
+
+Prog_mark
+
+amacrine 
+
+ecp
+
+nr
+
+related_to_RPE_and_RPC 
+
+rgc
+
+rpc
+
+ec
+
+POM 
+
+RPE 
+
+pioneer 
+
+blood
+
+
+cmz 
+
+
+```
+
+#assign cluster identity
+
+
+```{r}
+new.cluster.ids <- c("NR", "Low Quality Cells", "NR", "RPE", "RPE", "CMZ", "Pioneer", "NR", "Pioneer", "RPC", "POM", "EC", "RPE", "Blood", "EC", "15", "Pioneer")
+
+
+Idents(HH28) <- HH28@meta.data$RNA_snn_res.0.6
+
+names(new.cluster.ids) <- levels(HH28)
+
+HH28 <- RenameIdents(HH28, new.cluster.ids)
+
+```
+
+
+
+```{r}
+DimPlot(HH28, reduction = "umap", label = TRUE, label.size = 10, pt.size = 0.5, repel = TRUE) 
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/diff-reg/plots/HH28-diff-int-ant-0.6.png", dpi = 400, width =60, height = 40, units = "cm")
+
+
+```
+
+
+
+#diff
+```{r}
+
+saveRDS(HH28, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/diff-reg/sObj/sObj_HH28_diff-int_ant.RDS")
+
+```

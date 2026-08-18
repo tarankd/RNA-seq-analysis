@@ -61,7 +61,7 @@ markers %>%
     dplyr::filter(avg_log2FC > 1)
 
 
-write.xlsx(markers, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/reg-full-markers/HH30G-0.7-reg-full-markers.xlsx")
+write.xlsx(markers, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/reg-diff-markers/HH30G-0.6-reg-diff-markers.xlsx")
 
 ```
 
@@ -80,7 +80,7 @@ filtered_markers <- markers %>% filter(!startsWith(gene, "ENSGAL"))
 
 ```{r}
 
-cluster_workbook(filtered_markers, 13)
+cluster_workbook(filtered_markers, 12)
 
 ```
 
@@ -157,7 +157,7 @@ cmz
 
 
 ```{r}
-new.cluster.ids <- c("NR", "NR2", "RPE", "3", "CMZ", "RPC", "Pioneer", "RPE2", "8", "RGC", "ECP/A/HC", "POM", "EC")
+new.cluster.ids <- c("NR", "NR2", "RPE", "3", "CMZ", "RPC", "Pioneer", "RPE2", "8", "RGC", "ECP/A/HC", "EC", "POM")
 
 
 Idents(HH30G) <- HH30G@meta.data$RNA_snn_res.0.6
@@ -165,7 +165,11 @@ Idents(HH30G) <- HH30G@meta.data$RNA_snn_res.0.6
 names(new.cluster.ids) <- levels(HH30G)
 
 HH30G <- RenameIdents(HH30G, new.cluster.ids)
+```
 
+
+#if needed
+```{r}h
 
 Idents(HH30G) <- factor(Idents(HH30G), levels = (new.cluster.ids)) # doesn't work
 
@@ -174,10 +178,60 @@ HH30G$RNA_snn_res.0.6 <- factor(HH30G$RNA_snn_res.0.6, levels = (new.cluster.ids
 ```
 
 
+#if needed
+```{r}h
+
+### this worked to reset cluster id order
+
+# 1. Set Idents to the clustering column (if not already)
+Idents(HH30G) <- HH30G@meta.data$RNA_snn_res.0.6
+
+# 2. Drop unused levels
+Idents(HH30G) <- droplevels(Idents(HH30G))
+
+# 3. Define mapping from numeric cluster ID (as character) to new name
+cluster_map <- c(
+  "0"  = "NR",
+  "1"  = "NR2",
+  "2"  = "RPE",
+  "3"  = "3",
+  "4"  = "CMZ",
+  "5"  = "RPC",
+  "6"  = "Pioneer",
+  "7"  = "RPE2",
+  "8"  = "8",
+  "9"  = "RGC",
+  "10" = "ECP/A/HC",
+  "11" = "POM",
+  "12" = "EC"
+)
+
+# 4. Reorder this map to match the current levels order
+# (so RenameIdents gets a vector in the same order as levels(Idents(HH30G)))
+new.cluster.ids <- cluster_map[levels(Idents(HH30G))]
+names(new.cluster.ids) <- levels(Idents(HH30G))
+
+# 5. Check
+new.cluster.ids
+# Should be a named character vector with names "0","1","10",... and values your new names
+
+# 6. Rename identities
+HH30G <- RenameIdents(HH30G, new.cluster.ids)
+
+# 7. Now set the factor levels in your desired biological order
+desired_order <- c("NR", "NR2", "RPE", "3", "CMZ", "RPC",
+                   "Pioneer", "RPE2", "8", "RGC", "ECP/A/HC", "POM", "EC")
+
+Idents(HH30G) <- factor(Idents(HH30G), levels = desired_order)
+
+# 8. Verify
+levels(Idents(HH30G))
+```
+
 
 ```{r}
 DimPlot(HH30G, reduction = "umap", label = TRUE, label.size = 10, pt.size = 0.5) 
-ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/plots/cc/reg-full/ant_reg_full-0.7.png", dpi = 400, width =45, height = 25, units = "cm")
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/plots/cc/reg-diff/ant_reg_diff-0.6.png", dpi = 400, width =45, height = 25, units = "cm")
 
 
 ```
@@ -186,13 +240,13 @@ ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/plots/cc
 
 ```{r}
 
-saveRDS(HH30G, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/sObj/sObj_8_reg-diff-0.7_ant.RDS")
+saveRDS(HH30G, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/sObj/sObj_8_reg-diff-0.6_ant.RDS")
 
 ```
 
 
 
-```{r}
+```{r}h
 
 saveRDS(HH30G, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/sObj/sObj_9_reg-full_ant.RDS")
 

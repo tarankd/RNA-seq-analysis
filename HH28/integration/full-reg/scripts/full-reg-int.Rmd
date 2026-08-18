@@ -1,0 +1,128 @@
+---
+title: "regressed-integration"
+author: "Taran"
+date: "2026-08-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(harmony)
+library(Seurat)
+library(dplyr)
+library(cowplot)
+library(Matrix)
+library(ggplot2)
+options(bitmapType = "cairo")
+
+```
+
+
+#read full reg obj data
+```{r}
+
+
+HH30F <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30F/sObj/sObj_6_full_regression.RDS")
+HH30G <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/sObj/sObj_6_full_reg.RDS")
+HH30H <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30H/sObj/sObj_6_full_reg.RDS")
+HH30T <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30T/sObj/sObj_6_full_reg.RDS")
+
+```
+
+#set orig.ident so Harmony has something to integrate over
+```{r}
+
+HH30F$orig.ident <- "HH30F"
+HH30G$orig.ident <- "HH30G"
+HH30H$orig.ident <- "HH30H"
+HH30T$orig.ident <- "HH30T"
+```
+
+#merge into one object
+```{r}
+
+HH30 <- merge(HH30F, y = list (HH30G, HH30H, HH30T))
+
+```
+
+
+#pre-processing
+```{r}
+HH30 <- NormalizeData(HH30)
+HH30 <- FindVariableFeatures(HH30, selection.method = "vst", nfeatures = 2000)
+HH30 <- ScaleData(HH30, vars.to.regress = c("S.Score", "G2M.Score"), features = VariableFeatures(HH30))
+HH30 <- RunPCA(HH30, features = VariableFeatures(HH30), npcs = 50)
+
+```
+
+
+# Integrate over a single batch variable
+```{r}
+HH30 <- RunHarmony(
+  object         = HH30,
+  group.by.vars  = "orig.ident",        # or e.g. "batch", "donor"
+  reduction.use  = "pca",
+  dims.use       = 1:30,                # choose PCs to harmonize
+  reduction.save = "harmony",
+  project.dim    = TRUE
+)
+
+```
+
+
+
+# UMAP
+```{r}
+HH30 <- RunUMAP(HH30, reduction = "harmony", dims = 1:30)
+
+# Nearest neighbours and clustering
+HH30 <- FindNeighbors(HH30, reduction = "harmony", dims = 1:30)
+HH30 <- FindClusters(HH30, resolution = c(0.4, 0.5, 0.6, 0.7))
+
+```
+
+#UMAP trial
+```{r}
+
+res <- "RNA_snn_res."
+nums = c(0.4, 0.5, 0.6, 0.7)
+paste0(res, nums)
+
+DimPlot(HH30, reduction = "umap", label = TRUE, repel = TRUE, group.by = paste0(res, nums), pt.size = 0.5)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/integration/full-reg/plots/full-int-30-umap-trial-.png", dpi = 400, width =60, height = 35, units = "cm")
+
+```
+
+
+#plot UMAP
+```{r}
+
+DimPlot(HH30, reduction = "umap", label = TRUE, repel = TRUE, group.by = "RNA_snn_res.0.7", pt.size = 0.5)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/integration/full-reg/plots/full-int-30-0.7.png", dpi = 400, width =60, height = 35, units = "cm")
+
+```
+
+## TSNE dimensionality reduction
+```{r, fig.width=5, fig.height=2.5, fig.align="center", fig.cap="t-SNE Visualization of harmony embeddings"}h
+HH30 <- HH30 %>%
+    RunTSNE(reduction = "harmony")
+
+```
+
+```{r}h
+
+DimPlot(HH30, reduction = "tsne", label = TRUE, pt.size = .1)
+
+
+
+```
+
+```{r}
+
+saveRDS(HH30, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/integration/full-reg/sObj/sObj_HH30-full-int.RDS")
+
+```
