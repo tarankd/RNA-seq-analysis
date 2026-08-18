@@ -1,6 +1,0 @@
-"0","# Update the identity of the Seurat object and define the new order of groups"
-"0","HH30G@meta.data$Phase <- factor(HH30G@meta.data$Phase, levels = c(""G1"", ""S"", ""G2M""))"
-"0",""
-"0",""
-"0","# Reassign identity with the new order"
-"0","Idents(HH30G) <- HH30G@meta.data$Phase"
