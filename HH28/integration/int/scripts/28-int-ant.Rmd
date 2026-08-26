@@ -47,9 +47,9 @@ writeData(wb, sheet = "Markers", x = filtered_markers)
     
   }
   
-  
 }
 
+options(bitmapType = "cairo")
 
 ```
 
@@ -85,8 +85,7 @@ write.xlsx(markers, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq
 ```
 
 
-#filter out "ENSGAL" genes
-
+# filter out "ENSGAL" genes
 ```{r}
 
 filtered_markers <- markers %>% filter(!startsWith(gene, "ENSGAL"))
@@ -95,8 +94,7 @@ filtered_markers <- markers %>% filter(!startsWith(gene, "ENSGAL"))
 
 
 
-#write the markers to a workbook
-
+# write the markers to a workbook
 ```{r}
 
 cluster_workbook(filtered_markers, 17)
@@ -105,8 +103,7 @@ cluster_workbook(filtered_markers, 17)
 
 
 
-#look for marker expression throughout UMAP plot to identify clusters
-
+# look for marker expression throughout UMAP plot to identify clusters
 ```{r}
 
 Prog_mark <- FeaturePlot(HH28, features = c("ATOH7", "HES6"), pt.size = 0.5)
@@ -136,12 +133,9 @@ blood <- FeaturePlot(HH28, features = c("HBE1", "HBBA", "HBAD", "HBA1", "HBE", "
 cmz <- FeaturePlot(HH28, features = c("COL9A1", "CPAMD8", "MECOM", "OPTC", "RELN", "BNC", "FBN2", "FBN3"), pt.size = 0.5)
 
 
-
-
 ```
 
 ```{r}
-
 Prog_mark
 
 amacrine 
@@ -166,18 +160,13 @@ pioneer
 
 blood
 
-
 cmz 
-
 
 ```
 
-#assign cluster identity
-
-
+# assign cluster identity
 ```{r}
-new.cluster.ids <- c("Low Quality Cells", "CMZ", "NR", "RPE", "Pioneer", "CMZ", "RPE", "CMZ", "NR", "RPE", "RPC", "POM", "EC", "UBB","Blood", "EC", "16", "17")
-
+new.cluster.ids <- c("Low Quality Cells", "CMZ", "NR", "RPE", "Pioneer", "CMZ", "RPE", "CMZ", "NR", "RPE", "RPC", "POM", "EC", "UBB","Blood", "EC", "16", "Pioneer")
 
 Idents(HH28) <- HH28@meta.data$RNA_snn_res.0.7
 
@@ -187,26 +176,30 @@ HH28 <- RenameIdents(HH28, new.cluster.ids)
 
 ```
 
-
-
+# annotated umap
 ```{r}
 DimPlot(HH28, reduction = "umap", label = TRUE, label.size = 10, pt.size = 0.5, repel = TRUE) 
 ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/int/plots/HH28-int-ant-0.7.png", dpi = 400, width =45, height = 25, units = "cm")
 
-
 ```
-#contribution of cells from each sample to integration
 
-
+# contribution of cells from each sample to integration
 ```{r}
 
-DimPlot(HH28, reduction = "umap", label = TRUE, repel = TRUE, group.by = "orig.ident", pt.size = 0.5)
-ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/int/plots/0.7-28-int-umap.png", dpi = 400, width =60, height = 35, units = "cm")
+DimPlot(HH28, reduction = "umap", label = TRUE, repel = TRUE, split.by = "orig.ident", pt.size = 0.5, ncol = 2 )
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/int/plots/cont-int-umap-1.png", dpi = 400, width =60, height = 35, units = "cm")
 
 ```
 
 
-#diff
+# check QC metrics
+```{r}
+VlnPlot(HH28, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/int/plots/QC-metrics.png", dpi = 400, width =100, height = 55, units = "cm")
+```
+
+
+
 ```{r}
 
 saveRDS(HH28, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/int/sObj/sObj_HH28_int_ant.RDS")

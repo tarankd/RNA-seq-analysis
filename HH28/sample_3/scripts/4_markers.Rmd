@@ -227,20 +227,16 @@ names(new.cluster.ids) <- levels(HH28C)
 HH28C <- RenameIdents(HH28C, new.cluster.ids)
 DimPlot(HH28C, reduction = "umap", label = TRUE, label.size = 8) + xlab("UMAP 1") + ylab("UMAP 2") +
     theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size = 10)))
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_2/plots/umap/umap_HH28C.png", dpi = 400, width =60, height = 35, units = "cm")
 ```
-
-
 
 
 ```{r}
-
-png(file= "umap_HH28C.png", width=2500, height=1500, res = 200, type = "cairo") 
-DimPlot(HH28C, reduction = "umap", label = TRUE, label.size = 8) + xlab("UMAP 1") + ylab("UMAP 2") +
-    theme(axis.title = element_text(size = 18), legend.text = element_text(size = 18)) + guides(colour = guide_legend(override.aes = list(size = 10)))
-dev.off()
-
-
+VlnPlot(HH28C, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_3/plots/QC-metrics.png", dpi = 400, width =100, height = 55, units = "cm")
 ```
+
+
 
 
 

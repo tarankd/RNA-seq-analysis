@@ -26,44 +26,101 @@ options(bitmapType = "cairo")
 ```{r}
 
 
-HH30F <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30F/sObj/sObj_6_full_regression.RDS")
-HH30G <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30G/sObj/sObj_6_full_reg.RDS")
-HH30H <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30H/sObj/sObj_6_full_reg.RDS")
-HH30T <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/HH30T/sObj/sObj_6_full_reg.RDS")
+HH28A <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_1/sObj/sObj_7_regress_diff.RDS")
+HH28B <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_2/sObj/sObj_7_reg_diff.RDS")
+HH28C <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_3/sObj/sObj_7_reg_diff.RDS")
+HH28D <- readRDS("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/sample_4/sObj/sObj_7_reg_diff.RDS")
 
 ```
 
 #set orig.ident so Harmony has something to integrate over
 ```{r}
 
-HH30F$orig.ident <- "HH30F"
-HH30G$orig.ident <- "HH30G"
-HH30H$orig.ident <- "HH30H"
-HH30T$orig.ident <- "HH30T"
+HH28A$orig.ident <- "HH28A"
+HH28B$orig.ident <- "HH28B"
+HH28C$orig.ident <- "HH28C"
+HH28D$orig.ident <- "HH28D"
 ```
+
+
+######## add individual cell type annotations to each seurat object
+
+## HH28A
+```{r}
+anno_A <- read.csv(
+  "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/annotations/diff/HH28A-diff.txt"
+)
+
+anno_A$cell_type <- gsub("\\s+", "", anno_A$cell_type)
+
+HH28A$original_annotation <- anno_A$cell_type[
+  match(HH28A$RNA_snn_res.0.6, anno_A$cluster)
+]
+```
+
+
+## HH28B
+```{r}
+anno_B <- read.csv(
+  "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/annotations/diff/HH28B-diff.txt"
+)
+
+anno_B$cell_type <- gsub("\\s+", "", anno_B$cell_type)
+
+HH28B$original_annotation <- anno_B$cell_type[
+  match(HH28B$RNA_snn_res.0.6, anno_B$cluster)
+]
+```
+
+## HH28C
+```{r}
+anno_C <- read.csv(
+  "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/annotations/diff/HH28C-diff.txt"
+)
+
+anno_C$cell_type <- gsub("\\s+", "", anno_C$cell_type)
+
+HH28C$original_annotation <- anno_C$cell_type[
+  match(HH28C$RNA_snn_res.0.6, anno_C$cluster)
+]
+```
+
+## HH28D
+```{r}
+anno_D <- read.csv(
+  "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/annotations/diff/HH28D-diff.txt"
+)
+
+anno_D$cell_type <- gsub("\\s+", "", anno_D$cell_type)
+
+HH28D$original_annotation <- anno_D$cell_type[
+  match(HH28D$RNA_snn_res.0.4, anno_D$cluster)
+]
+```
+
 
 #merge into one object
 ```{r}
 
-HH30 <- merge(HH30A, y = list (HH30B, HH30C, HH30D))
+HH28 <- merge(HH28A, y = list (HH28B, HH28C, HH28D))
 
 ```
 
 
 #pre-processing
 ```{r}
-HH30 <- NormalizeData(HH30)
-HH30 <- FindVariableFeatures(HH30, selection.method = "vst", nfeatures = 2000)
-HH30 <- ScaleData(HH30, vars.to.regress = "CC.Difference", features = VariableFeatures(HH30A)) #regression diff
-HH30 <- RunPCA(HH30, features = VariableFeatures(HH30), npcs = 50)
+HH28 <- NormalizeData(HH28)
+HH28 <- FindVariableFeatures(HH28, selection.method = "vst", nfeatures = 2000)
+HH28 <- ScaleData(HH28, vars.to.regress = "CC.Difference", features = VariableFeatures(HH28A)) #regression diff
+HH28 <- RunPCA(HH28, features = VariableFeatures(HH28), npcs = 50)
 
 ```
 
 
 # Integrate over a single batch variable
 ```{r}
-HH30 <- RunHarmony(
-  object         = HH30,
+HH28 <- RunHarmony(
+  object         = HH28,
   group.by.vars  = "orig.ident",        # or e.g. "batch", "donor"
   reduction.use  = "pca",
   dims.use       = 1:30,                # choose PCs to harmonize
@@ -74,56 +131,51 @@ HH30 <- RunHarmony(
 ```
 
 
-
 # UMAP
 ```{r}
-HH30 <- RunUMAP(HH30, reduction = "harmony", dims = 1:30)
+HH28 <- RunUMAP(HH28, reduction = "harmony", dims = 1:30)
 
 # Nearest neighbours and clustering
-HH30 <- FindNeighbors(HH30, reduction = "harmony", dims = 1:30)
-HH30 <- FindClusters(HH30, resolution = c(0.4, 0.5, 0.6, 0.7))
+HH28 <- FindNeighbors(HH28, reduction = "harmony", dims = 1:30)
+HH28 <- FindClusters(HH28, resolution = c(0.4, 0.5, 0.6, 0.7))
 
 ```
 
 #UMAP trial
-```{r}
+```{r}H
 
 res <- "RNA_snn_res."
 nums = c(0.4, 0.5, 0.6, 0.7)
 paste0(res, nums)
 
-DimPlot(HH30, reduction = "umap", label = TRUE, repel = TRUE, group.by = paste0(res, nums), pt.size = 0.5)
-ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/integration/diff-reg/plots/reg-diff-int-30-umap-trial.png", dpi = 400, width =60, height = 35, units = "cm")
+DimPlot(HH28, reduction = "umap", label = TRUE, repel = TRUE, group.by = paste0(res, nums), pt.size = 0.5)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/diff-reg/plots/reg-diff-int-30-umap-trial.png", dpi = 400, width =60, height = 35, units = "cm")
 
 ```
 
+
+##reorder to alphanumeric
+```{r}
+HH28$original_annotation <- factor(HH28$original_annotation,levels = stringr::str_sort(unique(HH28$original_annotation), numeric=TRUE))
+```
 
 #plot UMAP
 ```{r}
 
-DimPlot(HH30, reduction = "umap", label = TRUE, repel = TRUE, group.by = "RNA_snn_res.0.6", pt.size = 0.5)
-ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/integration/diff-reg/plots/reg-diff-int-30-0.6.png", dpi = 400, width =60, height = 35, units = "cm")
-
-```
-
-## TSNE dimensionality reduction
-```{r, fig.width=5, fig.height=2.5, fig.align="center", fig.cap="t-SNE Visualization of harmony embeddings"}h
-HH30 <- HH30 %>%
-    RunTSNE(reduction = "harmony")
+DimPlot(HH28, reduction = "umap", label = TRUE, repel = TRUE, group.by = "original_annotation", pt.size = 0.5)
+ggsave("/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/diff-reg/plots/diff-cell-ant.png", dpi = 400, width =60, height = 35, units = "cm")
 
 ```
 
 ```{r}h
 
-DimPlot(HH30, reduction = "tsne", label = TRUE, pt.size = .1)
-
-
+saveRDS(HH28, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/diff-reg/sObj/sObj_HH28-diff-int.RDS")
 
 ```
+
 
 ```{r}
 
-saveRDS(HH30, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH30/integration/diff-reg/sObj/sObj_HH30-diff-int.RDS")
+saveRDS(HH28, file = "/nobackup/proj/comet_icnlmdhuc/Taran/chicken_RNA_seq/HH28/integration/diff-reg/sObj/sObj_HH28-cell-ant.RDS")
 
 ```
-
